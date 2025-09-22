@@ -1,24 +1,71 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Weather Agent Chat Client
+
+This is a Next.js application that provides a chat interface for interacting with a weather agent powered by Mastra.
+
+## Prerequisites
+
+Before running this client, make sure you have the agent-server running. Navigate to the `../agent-server` directory and start it:
+
+```bash
+cd ../agent-server
+npm run dev
+```
+
+The agent-server will typically run on `http://localhost:4200`.
+
+## Environment Setup
+
+Create a `.env.local` file in the root directory with the following content:
+
+```bash
+MASTRA_API_URL=https://agent-server-nine.vercel.app
+```
+
+**Note**: This environment variable is used server-side only (no `NEXT_PUBLIC_` prefix needed) since we use Next.js API routes as a proxy to the Mastra agent server. This architecture:
+- Avoids CORS issues
+- Keeps agent communication server-to-server
+- Enables future authentication integration
+- Provides better security
+
+Adjust the URL if your agent-server runs on a different port. If you don't create this file, the API will default to `http://localhost:4200`.
 
 ## Getting Started
 
-First, run the development server:
+First, install dependencies:
+
+```bash
+npm install
+```
+
+Then, run the development server:
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000) with your browser to see the weather agent chat interface.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Architecture
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+This application follows a secure server-to-server architecture:
+
+```
+Client (Browser) → Next.js API Routes → Mastra Agent Server
+```
+
+- **Client**: React-based chat interface
+- **Next.js API Routes**: Proxy layer handling authentication and agent communication
+- **Mastra Agent Server**: Backend AI agent service
+
+This design eliminates CORS issues, enables authentication, and maintains security best practices.
+
+## Features
+
+- Real-time chat interface with a weather agent
+- Ask about weather conditions in any location
+- Get activity suggestions based on weather
+- Responsive design with a clean, modern UI
+- Server-to-server architecture for security and authentication readiness
 
 ## Learn More
 
