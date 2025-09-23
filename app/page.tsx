@@ -85,9 +85,19 @@ export default function Home() {
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex flex-col">
       {/* Header */}
       <header className="bg-white shadow-sm border-b">
-        <div className="max-w-4xl mx-auto px-4 py-6">
-          <h1 className="text-2xl font-bold text-gray-900">Weather Agent Chat</h1>
-          <p className="text-gray-600 mt-1">Ask about weather conditions or get activity suggestions</p>
+        <div className="max-w-4xl mx-auto px-4 py-6 flex justify-between items-center">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">Weather Agent Chat</h1>
+            <p className="text-gray-600 mt-1">Ask about weather conditions or get activity suggestions</p>
+          </div>
+          <div>
+            <a
+              href="/admin"
+              className="bg-gray-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-gray-700 transition-colors"
+            >
+              Admin Panel
+            </a>
+          </div>
         </div>
       </header>
 
