@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { listClients, registerClient, deleteClient, updateClientScopes, getClientSecret, resetClientSecret } from '../../../lib/admin-client';
 
 interface Application {
   id: string;
@@ -97,6 +98,14 @@ const ALL_SCOPES = [
   'admin.read', 'admin.write'
 ];
 
+// Client scopes exclude admin scopes - only for application/component access
+const CLIENT_SCOPES = [
+  ...SCOPES_BY_COMPONENT_TYPE.agent,
+  ...SCOPES_BY_COMPONENT_TYPE.workflow,
+  ...SCOPES_BY_COMPONENT_TYPE.tool,
+  ...SCOPES_BY_COMPONENT_TYPE.rag_database
+];
+
 export default function ApplicationManagement() {
   const [applications, setApplications] = useState<Application[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
@@ -106,6 +115,11 @@ export default function ApplicationManagement() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showComponentModal, setShowComponentModal] = useState(false);
   const [showPermissionModal, setShowPermissionModal] = useState(false);
+  const [showCreateClientModal, setShowCreateClientModal] = useState(false);
+  const [showEditClientModal, setShowEditClientModal] = useState(false);
+  const [selectedClient, setSelectedClient] = useState<Client | null>(null);
+  const [clientSecret, setClientSecret] = useState<string | null>(null);
+  const [showSecret, setShowSecret] = useState(false);
   const [activeDetailTab, setActiveDetailTab] = useState<'overview' | 'components' | 'clients' | 'testing'>('overview');
 
   // Navigation handler for component clicks
@@ -151,6 +165,12 @@ export default function ApplicationManagement() {
   const [newPermission, setNewPermission] = useState({
     client_id: '',
     component_scopes: [] as string[]
+  });
+
+  const [newClient, setNewClient] = useState({
+    serverId: '',
+    name: '',
+    scopes: [] as string[]
   });
 
   useEffect(() => {
@@ -366,6 +386,63 @@ export default function ApplicationManagement() {
       setter(currentScopes.filter(s => s !== scope));
     } else {
       setter([...currentScopes, scope]);
+    }
+  };
+
+  const createClient = async () => {
+    try {
+      await registerClient(newClient);
+      setNewClient({ serverId: '', name: '', scopes: [] });
+      setShowCreateClientModal(false);
+      await fetchClients();
+    } catch (error: any) {
+      setError(error.message);
+    }
+  };
+
+  const handleDeleteClient = async (clientId: string) => {
+    if (!confirm('Are you sure you want to delete this client? This will remove all associated permissions.')) {
+      return;
+    }
+
+    try {
+      await deleteClient(clientId);
+      await fetchClients();
+    } catch (error: any) {
+      setError(error.message);
+    }
+  };
+
+  const handleUpdateClientScopes = async (clientId: string, scopes: string[]) => {
+    try {
+      await updateClientScopes(clientId, scopes);
+      await fetchClients();
+    } catch (error: any) {
+      setError(error.message);
+    }
+  };
+
+  const handleGetClientSecret = async (clientId: string) => {
+    try {
+      const result = await getClientSecret(clientId);
+      setClientSecret(result.secret);
+      setShowSecret(true);
+    } catch (error: any) {
+      setError(error.message);
+    }
+  };
+
+  const handleResetClientSecret = async (clientId: string) => {
+    if (!confirm('Are you sure you want to reset this client secret? This will invalidate the current secret.')) {
+      return;
+    }
+
+    try {
+      const result = await resetClientSecret(clientId);
+      setClientSecret(result.secret);
+      setShowSecret(true);
+    } catch (error: any) {
+      setError(error.message);
     }
   };
 
@@ -627,41 +704,200 @@ export default function ApplicationManagement() {
         )}
 
         {activeDetailTab === 'clients' && (
-          <div className="bg-white/80 backdrop-blur-sm rounded-xl shadow-lg border border-gray-200/50">
-            <div className="p-6 border-b border-gray-200/50">
-              <h3 className="text-lg font-semibold text-gray-900">Client Permissions</h3>
+          <div className="space-y-6">
+            {/* Client Management Header */}
+            <div className="bg-white/80 backdrop-blur-sm rounded-xl shadow-lg border border-gray-200/50">
+              <div className="flex items-center justify-between p-6 border-b border-gray-200/50">
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900">Client Management</h3>
+                  <p className="text-sm text-gray-500">Manage clients and their application access</p>
+                </div>
+                <button
+                  onClick={() => setShowCreateClientModal(true)}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors flex items-center space-x-2"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                  </svg>
+                  <span>Create Client</span>
+                </button>
+              </div>
             </div>
-          <div className="p-6">
-            {selectedApplication.clientPermissions && selectedApplication.clientPermissions.length > 0 ? (
-              <div className="space-y-3">
-                {selectedApplication.clientPermissions.map((permission) => {
-                  const client = clients.find(c => c.serverId === permission.client_id);
-                  return (
-                    <div key={permission.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                      <div>
-                        <p className="font-medium text-gray-900">{client?.name || permission.client_id}</p>
-                        <p className="text-sm text-gray-500">Client ID: {permission.client_id}</p>
-                      </div>
-                      <div className="flex flex-wrap gap-1">
-                        {permission.component_scopes.map((scope) => (
-                          <span
-                            key={scope}
-                            className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800"
-                          >
-                            {scope}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  );
-                })}
+
+            {/* All Clients Section */}
+            <div className="bg-white/80 backdrop-blur-sm rounded-xl shadow-lg border border-gray-200/50">
+              <div className="p-6 border-b border-gray-200/50">
+                <h4 className="text-md font-semibold text-gray-900">All Clients</h4>
+                <p className="text-sm text-gray-500">Manage all registered clients in the system</p>
               </div>
-            ) : (
-              <div className="text-center py-8 text-gray-500">
-                No client permissions granted yet. Click "Grant Permission" to assign access.
+              <div className="p-6">
+                {clients.length > 0 ? (
+                  <div className="space-y-3">
+                    {clients.map((client) => {
+                      const hasPermission = selectedApplication.clientPermissions?.find(p => p.client_id === client.serverId);
+                      return (
+                        <div key={client.serverId} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                          <div className="flex items-center space-x-3">
+                            <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+                              hasPermission ? 'bg-green-100' : 'bg-gray-100'
+                            }`}>
+                              <svg className={`w-5 h-5 ${
+                                hasPermission ? 'text-green-600' : 'text-gray-600'
+                              }`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                              </svg>
+                            </div>
+                            <div>
+                              <p className="font-medium text-gray-900">{client.name}</p>
+                              <p className="text-sm text-gray-500">ID: {client.serverId}</p>
+                              <div className="flex flex-wrap gap-1 mt-1">
+                                {client.scopes.slice(0, 3).map((scope) => (
+                                  <span
+                                    key={scope}
+                                    className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800"
+                                  >
+                                    {scope}
+                                  </span>
+                                ))}
+                                {client.scopes.length > 3 && (
+                                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600">
+                                    +{client.scopes.length - 3} more
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            {hasPermission ? (
+                              <div className="flex items-center space-x-2">
+                                <span className="text-sm text-green-600 font-medium">Has Access</span>
+                                <button
+                                  onClick={() => {
+                                    setSelectedClient(client);
+                                    setShowEditClientModal(true);
+                                  }}
+                                  className="px-3 py-1 bg-blue-100 hover:bg-blue-200 text-blue-700 rounded transition-colors text-sm"
+                                >
+                                  Edit Access
+                                </button>
+                              </div>
+                            ) : (
+                              <button
+                                onClick={() => {
+                                  setNewPermission({ client_id: client.serverId, component_scopes: [] });
+                                  setShowPermissionModal(true);
+                                }}
+                                className="px-3 py-1 bg-green-100 hover:bg-green-200 text-green-700 rounded transition-colors text-sm"
+                              >
+                                Grant Access
+                              </button>
+                            )}
+                            <button
+                              onClick={() => {
+                                setSelectedClient(client);
+                                setShowEditClientModal(true);
+                              }}
+                              className="px-3 py-1 bg-purple-100 hover:bg-purple-200 text-purple-700 rounded transition-colors text-sm"
+                              title="Edit Client"
+                            >
+                              Edit
+                            </button>
+                            <button
+                              onClick={() => handleGetClientSecret(client.serverId)}
+                              className="px-3 py-1 bg-orange-100 hover:bg-orange-200 text-orange-700 rounded transition-colors text-sm"
+                              title="Get Secret"
+                            >
+                              Secret
+                            </button>
+                            <button
+                              onClick={() => handleDeleteClient(client.serverId)}
+                              className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                            >
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                              </svg>
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="text-center py-8 text-gray-500">
+                    No clients registered yet. Create your first client to get started.
+                  </div>
+                )}
               </div>
-            )}
-          </div>
+            </div>
+
+            {/* Application-Specific Client Permissions */}
+            <div className="bg-white/80 backdrop-blur-sm rounded-xl shadow-lg border border-gray-200/50">
+              <div className="p-6 border-b border-gray-200/50">
+                <h4 className="text-md font-semibold text-gray-900">Application Access</h4>
+                <p className="text-sm text-gray-500">Clients with access to "{selectedApplication.display_name}"</p>
+              </div>
+              <div className="p-6">
+                {selectedApplication.clientPermissions && selectedApplication.clientPermissions.length > 0 ? (
+                  <div className="space-y-3">
+                    {selectedApplication.clientPermissions.map((permission) => {
+                      const client = clients.find(c => c.serverId === permission.client_id);
+                      return (
+                        <div key={permission.id} className="flex items-center justify-between p-4 bg-green-50 rounded-lg border border-green-200">
+                          <div className="flex items-center space-x-3">
+                            <div className="w-10 h-10 bg-green-600 rounded-lg flex items-center justify-center">
+                              <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                              </svg>
+                            </div>
+                            <div>
+                              <p className="font-medium text-gray-900">{client?.name || permission.client_id}</p>
+                              <p className="text-sm text-gray-500">Client ID: {permission.client_id}</p>
+                              <div className="flex flex-wrap gap-1 mt-1">
+                                {permission.component_scopes.map((scope) => (
+                                  <span
+                                    key={scope}
+                                    className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800"
+                                  >
+                                    {scope}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <button
+                              onClick={() => {
+                                const client = clients.find(c => c.serverId === permission.client_id);
+                                if (client) {
+                                  setSelectedClient(client);
+                                  setShowEditClientModal(true);
+                                }
+                              }}
+                              className="px-3 py-1 bg-blue-100 hover:bg-blue-200 text-blue-700 rounded transition-colors text-sm"
+                            >
+                              Edit
+                            </button>
+                            <button
+                              onClick={() => {
+                                // TODO: Add remove permission functionality
+                                console.log('Remove permission for:', permission.client_id);
+                              }}
+                              className="px-3 py-1 bg-red-100 hover:bg-red-200 text-red-700 rounded transition-colors text-sm"
+                            >
+                              Revoke
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="text-center py-8 text-gray-500">
+                    No clients have access to this application yet. Grant access to clients from the list above.
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
         )}
 
@@ -835,6 +1071,159 @@ export default function ApplicationManagement() {
           </div>
         )}
 
+        {/* Create Client Modal */}
+        {showCreateClientModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Create New Client</h3>
+              
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Client ID</label>
+                  <input
+                    type="text"
+                    value={newClient.serverId}
+                    onChange={(e) => setNewClient(prev => ({ ...prev, serverId: e.target.value }))}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2"
+                    placeholder="e.g., weather-app-client"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Display Name</label>
+                  <input
+                    type="text"
+                    value={newClient.name}
+                    onChange={(e) => setNewClient(prev => ({ ...prev, name: e.target.value }))}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2"
+                    placeholder="e.g., Weather App Client"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Global Scopes</label>
+                  <div className="space-y-2 max-h-32 overflow-y-auto">
+                    {CLIENT_SCOPES.map(scope => (
+                      <label key={scope} className="flex items-center">
+                        <input
+                          type="checkbox"
+                          checked={newClient.scopes.includes(scope)}
+                          onChange={() => handleScopeToggle(scope, newClient.scopes, 
+                            (scopes) => setNewClient(prev => ({ ...prev, scopes })))}
+                          className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                        />
+                        <span className="ml-2 text-sm text-gray-700">{scope}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex space-x-3 mt-6">
+                <button
+                  onClick={createClient}
+                  disabled={!newClient.serverId || !newClient.name}
+                  className="flex-1 bg-blue-600 text-white py-2 rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors"
+                >
+                  Create Client
+                </button>
+                <button
+                  onClick={() => setShowCreateClientModal(false)}
+                  className="flex-1 bg-gray-300 text-gray-700 py-2 rounded-lg font-medium hover:bg-gray-400 transition-colors"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Edit Client Modal */}
+        {showEditClientModal && selectedClient && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Edit Client: {selectedClient.name}</h3>
+              
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Client ID</label>
+                  <input
+                    type="text"
+                    value={selectedClient.serverId}
+                    disabled
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 bg-gray-50"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Global Scopes</label>
+                  <div className="space-y-2 max-h-32 overflow-y-auto">
+                    {CLIENT_SCOPES.map(scope => (
+                      <label key={scope} className="flex items-center">
+                        <input
+                          type="checkbox"
+                          checked={selectedClient.scopes.includes(scope)}
+                          onChange={() => {
+                            const newScopes = selectedClient.scopes.includes(scope)
+                              ? selectedClient.scopes.filter(s => s !== scope)
+                              : [...selectedClient.scopes, scope];
+                            setSelectedClient(prev => prev ? { ...prev, scopes: newScopes } : null);
+                          }}
+                          className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                        />
+                        <span className="ml-2 text-sm text-gray-700">{scope}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                {/* Client Secret Management */}
+                <div className="border-t pt-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Client Secret Management</label>
+                  <div className="flex space-x-2">
+                    <button
+                      onClick={() => handleGetClientSecret(selectedClient.serverId)}
+                      className="px-3 py-2 bg-orange-100 hover:bg-orange-200 text-orange-700 rounded transition-colors text-sm"
+                    >
+                      Show Secret
+                    </button>
+                    <button
+                      onClick={() => handleResetClientSecret(selectedClient.serverId)}
+                      className="px-3 py-2 bg-red-100 hover:bg-red-200 text-red-700 rounded transition-colors text-sm"
+                    >
+                      Reset Secret
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex space-x-3 mt-6">
+                <button
+                  onClick={() => {
+                    handleUpdateClientScopes(selectedClient.serverId, selectedClient.scopes);
+                    setShowEditClientModal(false);
+                    setSelectedClient(null);
+                  }}
+                  className="flex-1 bg-blue-600 text-white py-2 rounded-lg font-medium hover:bg-blue-700 transition-colors"
+                >
+                  Update Client
+                </button>
+                <button
+                  onClick={() => {
+                    setShowEditClientModal(false);
+                    setSelectedClient(null);
+                  }}
+                  className="flex-1 bg-gray-300 text-gray-700 py-2 rounded-lg font-medium hover:bg-gray-400 transition-colors"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Grant Permission Modal */}
         {showPermissionModal && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -861,7 +1250,7 @@ export default function ApplicationManagement() {
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Component Scopes</label>
                   <div className="space-y-2 max-h-32 overflow-y-auto">
-                    {ALL_SCOPES.map(scope => (
+                    {CLIENT_SCOPES.map(scope => (
                       <label key={scope} className="flex items-center">
                         <input
                           type="checkbox"
@@ -890,6 +1279,63 @@ export default function ApplicationManagement() {
                   className="flex-1 bg-gray-300 text-gray-700 py-2 rounded-lg font-medium hover:bg-gray-400 transition-colors"
                 >
                   Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Client Secret Modal */}
+        {showSecret && clientSecret && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Client Secret</h3>
+              
+              <div className="space-y-4">
+                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                  <div className="flex items-center mb-2">
+                    <svg className="w-5 h-5 text-yellow-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 15.5c-.77.833.192 2.5 1.732 2.5z" />
+                    </svg>
+                    <span className="text-sm font-medium text-yellow-800">Important</span>
+                  </div>
+                  <p className="text-sm text-yellow-700">
+                    Store this secret securely. It will not be displayed again.
+                  </p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Client Secret</label>
+                  <div className="flex items-center space-x-2">
+                    <input
+                      type="text"
+                      value={clientSecret}
+                      readOnly
+                      className="flex-1 border border-gray-300 rounded-lg px-3 py-2 bg-gray-50 font-mono text-sm"
+                    />
+                    <button
+                      onClick={() => {
+                        navigator.clipboard.writeText(clientSecret);
+                        // You might want to show a toast notification here
+                      }}
+                      className="px-3 py-2 bg-blue-100 hover:bg-blue-200 text-blue-700 rounded transition-colors text-sm"
+                      title="Copy to clipboard"
+                    >
+                      Copy
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex space-x-3 mt-6">
+                <button
+                  onClick={() => {
+                    setShowSecret(false);
+                    setClientSecret(null);
+                  }}
+                  className="flex-1 bg-gray-300 text-gray-700 py-2 rounded-lg font-medium hover:bg-gray-400 transition-colors"
+                >
+                  Close
                 </button>
               </div>
             </div>

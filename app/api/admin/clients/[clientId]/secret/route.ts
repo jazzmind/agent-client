@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getAdminHeaders } from '../../../../../lib/admin-auth';
+import { getAdminHeaders } from '../../../../../../lib/admin-auth';
 
 const AGENT_SERVER_URL = process.env.MASTRA_API_URL || 'https://agent-sundai.vercel.app';
 
-export async function DELETE(
+export async function GET(
   request: NextRequest,
   context: { params: Promise<{ clientId: string }> }
 ) {
@@ -18,8 +18,8 @@ export async function DELETE(
     }
 
     const headers = await getAdminHeaders();
-    const response = await fetch(`${AGENT_SERVER_URL}/api/clients/${clientId}`, {
-      method: 'DELETE',
+    const response = await fetch(`${AGENT_SERVER_URL}/api/clients/${clientId}/secret`, {
+      method: 'GET',
       headers,
     });
 
@@ -28,26 +28,26 @@ export async function DELETE(
         return NextResponse.json({ error: 'Client not found' }, { status: 404 });
       }
       const errorData = await response.text();
-      throw new Error(`Failed to delete client: ${response.status} ${errorData}`);
+      throw new Error(`Failed to get client secret: ${response.status} ${errorData}`);
     }
 
-    return NextResponse.json({ message: 'Client deleted successfully' });
+    const data = await response.json();
+    return NextResponse.json(data);
   } catch (error: any) {
-    console.error('Failed to delete client:', error);
+    console.error('Failed to get client secret:', error);
     return NextResponse.json(
-      { error: error.message || 'Failed to delete client' },
+      { error: error.message || 'Failed to get client secret' },
       { status: 500 }
     );
   }
 }
 
-export async function PATCH(
+export async function POST(
   request: NextRequest,
   context: { params: Promise<{ clientId: string }> }
 ) {
   try {
     const { clientId } = await context.params;
-    const { scopes } = await request.json();
     
     if (!clientId) {
       return NextResponse.json(
@@ -56,23 +56,10 @@ export async function PATCH(
       );
     }
 
-    if (!Array.isArray(scopes)) {
-      return NextResponse.json(
-        { error: 'Scopes must be an array' },
-        { status: 400 }
-      );
-    }
-
     const headers = await getAdminHeaders();
-    const response = await fetch(`${AGENT_SERVER_URL}/api/clients/${clientId}`, {
-      method: 'PATCH',
-      headers: {
-        ...headers,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        scopes,
-      }),
+    const response = await fetch(`${AGENT_SERVER_URL}/api/clients/${clientId}/secret`, {
+      method: 'POST',
+      headers,
     });
 
     if (!response.ok) {
@@ -80,15 +67,15 @@ export async function PATCH(
         return NextResponse.json({ error: 'Client not found' }, { status: 404 });
       }
       const errorData = await response.text();
-      throw new Error(`Failed to update client scopes: ${response.status} ${errorData}`);
+      throw new Error(`Failed to reset client secret: ${response.status} ${errorData}`);
     }
 
     const data = await response.json();
     return NextResponse.json(data);
   } catch (error: any) {
-    console.error('Failed to update client scopes:', error);
+    console.error('Failed to reset client secret:', error);
     return NextResponse.json(
-      { error: error.message || 'Failed to update client scopes' },
+      { error: error.message || 'Failed to reset client secret' },
       { status: 500 }
     );
   }

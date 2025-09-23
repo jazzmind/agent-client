@@ -55,14 +55,32 @@ export async function deleteClient(clientId: string) {
  * Update client scopes
  */
 export async function updateClientScopes(clientId: string, scopes: string[]) {
-  const response = await fetch('/api/admin/clients', {
-    method: 'POST',
+  const response = await fetch(`/api/admin/clients/${clientId}`, {
+    method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      serverId: clientId,
-      name: clientId,
       scopes,
     }),
+  });
+  return handleResponse(response);
+}
+
+/**
+ * Get client secret
+ */
+export async function getClientSecret(clientId: string) {
+  const response = await fetch(`/api/admin/clients/${clientId}/secret`, {
+    method: 'GET',
+  });
+  return handleResponse(response);
+}
+
+/**
+ * Reset client secret
+ */
+export async function resetClientSecret(clientId: string) {
+  const response = await fetch(`/api/admin/clients/${clientId}/secret`, {
+    method: 'POST',
   });
   return handleResponse(response);
 }
@@ -214,6 +232,24 @@ export async function getWorkflow(workflowId: string) {
 }
 
 /**
+ * Update a workflow
+ */
+export async function updateWorkflow(workflowId: string, workflowData: {
+  name?: string;
+  description?: string;
+  steps?: any[];
+  triggers?: any[];
+  scopes?: string[];
+}) {
+  const response = await fetch(`/api/admin/workflows/${workflowId}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(workflowData),
+  });
+  return handleResponse(response);
+}
+
+/**
  * Delete a workflow
  */
 export async function deleteWorkflow(workflowId: string) {
@@ -249,6 +285,24 @@ export async function createTool(toolData: {
 }) {
   const response = await fetch('/api/admin/tools', {
     method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(toolData),
+  });
+  return handleResponse(response);
+}
+
+/**
+ * Update a tool
+ */
+export async function updateTool(toolId: string, toolData: {
+  name?: string;
+  description?: string;
+  input_schema?: string;
+  output_schema?: string;
+  scopes?: string[];
+}) {
+  const response = await fetch(`/api/admin/tools/${toolId}`, {
+    method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(toolData),
   });

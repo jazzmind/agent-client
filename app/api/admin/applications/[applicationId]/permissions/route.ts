@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getAdminHeaders } from '@/lib/admin-client';
+import { getAdminHeaders } from '@/lib/admin-auth';
 
 const baseUrl = process.env.MASTRA_API_URL || 'https://agent-sundai.vercel.app';
 
