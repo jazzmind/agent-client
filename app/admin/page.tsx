@@ -201,6 +201,13 @@ export default function AdminPage() {
             </div>
             
               <div className="flex items-center space-x-4">
+              <a
+                href="/simulator"
+                className="bg-indigo-600 text-white px-3 py-2 rounded-lg font-medium hover:bg-indigo-700 transition-colors text-sm flex items-center space-x-2"
+              >
+                <span className="text-sm">🎭</span>
+                <span>Client Simulator</span>
+              </a>
               <button className="p-2 rounded-lg hover:bg-gray-100 transition-colors relative">
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-5 5v-5zM15 17H3a2 2 0 01-2-2V3a2 2 0 012-2h12a2 2 0 012 2v12a2 2 0 01-2 2z" />

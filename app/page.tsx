@@ -90,7 +90,13 @@ export default function Home() {
             <h1 className="text-2xl font-bold text-gray-900">Weather Agent Chat</h1>
             <p className="text-gray-600 mt-1">Ask about weather conditions or get activity suggestions</p>
           </div>
-          <div>
+          <div className="flex items-center space-x-3">
+            <a
+              href="/simulator"
+              className="bg-indigo-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-indigo-700 transition-colors"
+            >
+              Client Simulator
+            </a>
             <a
               href="/admin"
               className="bg-gray-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-gray-700 transition-colors"
