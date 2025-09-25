@@ -177,9 +177,9 @@ Available scopes:
 
 ### Agent Server Routes
 
-- `POST /servers/register` - Register new client (protected)
-- `GET /servers` - List clients (protected)
-- `DELETE /servers/:clientId` - Delete client (protected)
+- `POST /clients/register` - Register new client (protected)
+- `GET /clients` - List clients (protected)
+- `DELETE /clients/:clientId` - Delete client (protected)
 - `POST /admin/reload` - Reload dynamic definitions (protected)
 - `GET /auth/health` - System health check
 

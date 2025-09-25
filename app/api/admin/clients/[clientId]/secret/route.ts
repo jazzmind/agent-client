@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getAdminHeaders } from '../../../../../../lib/admin-auth';
+import { getAdminHeaders } from '@/lib/admin-auth';
 
-const AGENT_SERVER_URL = process.env.MASTRA_API_URL || 'https://agent-sundai.vercel.app';
+const baseUrl = process.env.MASTRA_API_URL || 'https://agent-sundai.vercel.app';
 
+// Get client secret
 export async function GET(
   request: NextRequest,
   context: { params: Promise<{ clientId: string }> }
@@ -17,10 +18,11 @@ export async function GET(
       );
     }
 
-    const headers = await getAdminHeaders();
-    const response = await fetch(`${AGENT_SERVER_URL}/api/clients/${clientId}/secret`, {
+    const authHeaders = await getAdminHeaders();
+    
+    const response = await fetch(`${baseUrl}/clients/${clientId}/secret`, {
       method: 'GET',
-      headers,
+      headers: authHeaders
     });
 
     if (!response.ok) {
@@ -42,6 +44,7 @@ export async function GET(
   }
 }
 
+// Reset client secret
 export async function POST(
   request: NextRequest,
   context: { params: Promise<{ clientId: string }> }
@@ -56,10 +59,11 @@ export async function POST(
       );
     }
 
-    const headers = await getAdminHeaders();
-    const response = await fetch(`${AGENT_SERVER_URL}/api/clients/${clientId}/secret`, {
+    const authHeaders = await getAdminHeaders();
+    
+    const response = await fetch(`${baseUrl}/clients/${clientId}/secret`, {
       method: 'POST',
-      headers,
+      headers: authHeaders
     });
 
     if (!response.ok) {

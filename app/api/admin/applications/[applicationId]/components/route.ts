@@ -3,6 +3,37 @@ import { getAdminHeaders } from '@/lib/admin-auth';
 
 const baseUrl = process.env.MASTRA_API_URL || 'https://agent-sundai.vercel.app';
 
+export async function GET(request: NextRequest) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const componentType = searchParams.get('type');
+    
+    const authHeaders = await getAdminHeaders();
+    
+    // Build query string for the backend request
+    const queryString = componentType ? `?type=${encodeURIComponent(componentType)}` : '';
+    
+    const response = await fetch(`${baseUrl}/components${queryString}`, {
+      method: 'GET',
+      headers: authHeaders
+    });
+
+    if (!response.ok) {
+      const errorData = await response.text();
+      throw new Error(`Failed to fetch available components: ${response.status} ${errorData}`);
+    }
+
+    const data = await response.json();
+    return NextResponse.json(data);
+  } catch (error: any) {
+    console.error('Failed to fetch available components:', error);
+    return NextResponse.json(
+      { error: error.message || 'Failed to fetch available components' },
+      { status: 500 }
+    );
+  }
+}
+
 export async function POST(
   request: NextRequest,
   context: { params: Promise<{ applicationId: string }> }
@@ -10,7 +41,7 @@ export async function POST(
   try {
     const { applicationId } = await context.params;
     const componentData = await request.json();
-    
+    console.log('componentData', componentData);
     if (!applicationId) {
       return NextResponse.json(
         { error: 'Application ID is required' },
@@ -28,7 +59,7 @@ export async function POST(
 
     const authHeaders = await getAdminHeaders();
     
-    const response = await fetch(`${baseUrl}/applications/${applicationId}/components`, {
+    const response = await fetch(`${baseUrl}/components/applications/${applicationId}`, {
       method: 'POST',
       headers: {
         ...authHeaders,

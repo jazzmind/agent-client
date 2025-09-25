@@ -28,7 +28,7 @@ export async function POST(
 
     const authHeaders = await getAdminHeaders();
     
-    const response = await fetch(`${baseUrl}/applications/${applicationId}/permissions`, {
+    const response = await fetch(`${baseUrl}/applications/${applicationId}/permissions/${permissionData.client_id}`, {
       method: 'POST',
       headers: {
         ...authHeaders,

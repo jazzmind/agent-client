@@ -17,11 +17,6 @@ interface NewClientForm {
 }
 
 const AVAILABLE_SCOPES = [
-  'weather.read',
-  'weather.write',
-  'agent.execute',
-  'workflow.execute',
-  'tool.execute',
   'admin.read',
   'admin.write'
 ];
@@ -186,8 +181,11 @@ export default function ClientManagement() {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Scopes
+                  Global Scopes
                 </label>
+                <p className="text-xs text-gray-500 mb-2">
+                  These are global client scopes. Application-specific permissions are managed in the Applications section.
+                </p>
                 <div className="space-y-2 max-h-32 overflow-y-auto">
                   {AVAILABLE_SCOPES.map(scope => (
                     <label key={scope} className="flex items-center">

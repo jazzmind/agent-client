@@ -31,7 +31,7 @@ describe('admin-client', () => {
   describe('listClients', () => {
     it('should fetch and return list of clients', async () => {
       const mockClients = {
-        servers: [
+        clients: [
           {
             serverId: 'test-client',
             name: 'Test Client',
@@ -44,7 +44,7 @@ describe('admin-client', () => {
 
       // Mock the implementation to return our test data
       mockListClients.mockImplementation(async () => {
-        const response = await fetch(`${mockEnv.MASTRA_API_URL}/servers`, {
+        const response = await fetch(`${mockEnv.MASTRA_API_URL}/clients`, {
           method: 'GET',
           headers: {
             'X-Management-Client-Id': mockEnv.MANAGEMENT_CLIENT_ID,
@@ -70,7 +70,7 @@ describe('admin-client', () => {
 
     it('should handle API errors', async () => {
       mockListClients.mockImplementation(async () => {
-        const response = await fetch(`${mockEnv.MASTRA_API_URL}/servers`);
+        const response = await fetch(`${mockEnv.MASTRA_API_URL}/clients`);
         
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);
@@ -105,7 +105,7 @@ describe('admin-client', () => {
       };
 
       mockRegisterClient.mockImplementation(async (data) => {
-        const response = await fetch(`${mockEnv.MASTRA_API_URL}/servers/register`, {
+        const response = await fetch(`${mockEnv.MASTRA_API_URL}/clients/register`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -139,7 +139,7 @@ describe('admin-client', () => {
   describe('deleteClient', () => {
     it('should delete a client', async () => {
       mockDeleteClient.mockImplementation(async (clientId) => {
-        const response = await fetch(`${mockEnv.MASTRA_API_URL}/servers/${clientId}`, {
+        const response = await fetch(`${mockEnv.MASTRA_API_URL}/clients/${clientId}`, {
           method: 'DELETE',
           headers: {
             'X-Management-Client-Id': mockEnv.MANAGEMENT_CLIENT_ID,
@@ -169,7 +169,7 @@ describe('admin-client', () => {
       const newScopes = ['weather.read', 'agent.execute'];
       
       mockUpdateClientScopes.mockImplementation(async (clientId, scopes) => {
-        const response = await fetch(`${mockEnv.MASTRA_API_URL}/servers/register`, {
+        const response = await fetch(`${mockEnv.MASTRA_API_URL}/clients/register`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',

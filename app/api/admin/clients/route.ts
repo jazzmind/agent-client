@@ -5,7 +5,7 @@ const AGENT_SERVER_URL = process.env.MASTRA_API_URL || 'https://agent-sundai.ver
 export async function GET() {
   try {
     const headers = await getAdminHeaders();
-    const response = await fetch(`${AGENT_SERVER_URL}/servers`, {
+    const response = await fetch(`${AGENT_SERVER_URL}/clients`, {
       method: 'GET',
       headers,
     });
@@ -38,7 +38,7 @@ export async function POST(request: NextRequest) {
       name: clientData.name,
       scopes: clientData.scopes || [],
     };
-    const response = await fetch(`${AGENT_SERVER_URL}/servers/register`, {
+    const response = await fetch(`${AGENT_SERVER_URL}/clients/register`, {
       method: 'POST',
       headers,
       body: JSON.stringify(data),

@@ -8,6 +8,7 @@ interface Application {
   name: string;
   display_name: string;
   description?: string;
+  scope_prefix?: string;
   created_by?: string;
   created_at: string;
   updated_at: string;
@@ -18,7 +19,7 @@ interface Application {
 interface ApplicationComponent {
   id: string;
   application_id: string;
-  component_type: 'agent' | 'workflow' | 'tool' | 'rag_database';
+  component_type: 'agent' | 'workflow' | 'tool' | 'rag_database' | 'network' | 'scorer';
   component_id: string;
   component_name: string;
   scopes: string[];
@@ -43,6 +44,7 @@ interface Client {
   registeredBy: string;
 }
 
+// Component types for UI display
 const COMPONENT_TYPES = [
   { 
     value: 'agent', 
@@ -80,30 +82,25 @@ const COMPONENT_TYPES = [
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4" />
       </svg>
     )
+  },
+  { 
+    value: 'network', 
+    label: 'Network', 
+    icon: (
+      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.111 16.404a5.5 5.5 0 017.778 0M12 20h.01m-7.08-7.071c3.904-3.905 10.236-3.905 14.141 0M1.394 9.393c5.857-5.857 15.355-5.857 21.213 0" />
+      </svg>
+    )
+  },
+  { 
+    value: 'scorer', 
+    label: 'Scorer', 
+    icon: (
+      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3" />
+      </svg>
+    )
   }
-];
-
-const SCOPES_BY_COMPONENT_TYPE = {
-  agent: ['agent.read', 'agent.write', 'agent.execute'],
-  workflow: ['workflow.read', 'workflow.write', 'workflow.execute'],
-  tool: ['tool.read', 'tool.write', 'tool.execute'],
-  rag_database: ['rag.read', 'rag.write', 'rag.search']
-};
-
-const ALL_SCOPES = [
-  ...SCOPES_BY_COMPONENT_TYPE.agent,
-  ...SCOPES_BY_COMPONENT_TYPE.workflow,
-  ...SCOPES_BY_COMPONENT_TYPE.tool,
-  ...SCOPES_BY_COMPONENT_TYPE.rag_database,
-  'admin.read', 'admin.write'
-];
-
-// Client scopes exclude admin scopes - only for application/component access
-const CLIENT_SCOPES = [
-  ...SCOPES_BY_COMPONENT_TYPE.agent,
-  ...SCOPES_BY_COMPONENT_TYPE.workflow,
-  ...SCOPES_BY_COMPONENT_TYPE.tool,
-  ...SCOPES_BY_COMPONENT_TYPE.rag_database
 ];
 
 export default function ApplicationManagement() {
@@ -120,7 +117,15 @@ export default function ApplicationManagement() {
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
   const [clientSecret, setClientSecret] = useState<string | null>(null);
   const [showSecret, setShowSecret] = useState(false);
+  const [showClientSelectorModal, setShowClientSelectorModal] = useState(false);
+  const [showScopePrefixEditor, setShowScopePrefixEditor] = useState(false);
+  const [editingScopePrefix, setEditingScopePrefix] = useState('');
   const [activeDetailTab, setActiveDetailTab] = useState<'overview' | 'components' | 'clients' | 'testing'>('overview');
+
+  // Testing state
+  const [selectedTestClient, setSelectedTestClient] = useState<string | null>(null);
+  const [testResults, setTestResults] = useState<{[key: string]: {success: boolean, message: string, timestamp: string}}>({});
+  const [testingInProgress, setTestingInProgress] = useState<{[key: string]: boolean}>({});
 
   // Navigation handler for component clicks
   const handleComponentNavigation = (componentType: string, componentId: string) => {
@@ -129,14 +134,15 @@ export default function ApplicationManagement() {
       'agent': '/admin/agents',
       'workflow': '/admin/workflows', 
       'tool': '/admin/tools',
-      'rag_database': '/admin/rag'
+      'rag_database': '/admin/rag',
+      'network': '/admin/networks',
+      'scorer': '/admin/scorers'
     };
     
     const baseRoute = routeMap[componentType as keyof typeof routeMap];
     if (baseRoute) {
-      // Navigate to the component with the specific ID in a way that the management component can handle
-      // For now, we'll use window.location but this could be enhanced with proper router
-      window.location.href = `${baseRoute}?component=${encodeURIComponent(componentId)}`;
+      // Navigate to the component details page - assuming the ID is part of the URL path
+      window.location.href = `${baseRoute}/${encodeURIComponent(componentId)}`;
     }
   };
 
@@ -151,7 +157,7 @@ export default function ApplicationManagement() {
     component_type: 'agent' as const,
     component_id: '',
     component_name: '',
-    scopes: [] as string[]
+    scopes: [] as string[] // This will be auto-populated by the backend based on component type
   });
   
   const [availableComponents, setAvailableComponents] = useState<{
@@ -159,6 +165,7 @@ export default function ApplicationManagement() {
     name: string;
     display_name: string;
     component_type: string;
+    scopes: string[];
   }[]>([]);
   const [loadingComponents, setLoadingComponents] = useState(false);
 
@@ -172,6 +179,8 @@ export default function ApplicationManagement() {
     name: '',
     scopes: [] as string[]
   });
+
+  const [selectedClientForPermission, setSelectedClientForPermission] = useState<Client | null>(null);
 
   useEffect(() => {
     fetchApplications();
@@ -242,8 +251,9 @@ export default function ApplicationManagement() {
   const fetchAvailableComponents = async (componentType?: string) => {
     setLoadingComponents(true);
     try {
+      const applicationId = selectedApplication?.id;
       const queryString = componentType ? `?type=${encodeURIComponent(componentType)}` : '';
-      const response = await fetch(`/api/admin/components/available${queryString}`);
+      const response = await fetch(`/api/admin/applications/${applicationId}/components${queryString}`);
       
       if (!response.ok) {
         const errorData = await response.json();
@@ -312,21 +322,19 @@ export default function ApplicationManagement() {
     if (selectedComponent) {
       setNewComponent(prev => ({
         ...prev,
-        component_id: selectedComponent.name,
+        component_id: selectedComponent.id,
         component_name: selectedComponent.display_name,
-        scopes: [] // Reset scopes when component changes
+        scopes: selectedComponent.scopes || [] // Use component-defined scopes
       }));
     }
   };
 
-  const getAvailableScopes = (componentType: string) => {
-    return SCOPES_BY_COMPONENT_TYPE[componentType as keyof typeof SCOPES_BY_COMPONENT_TYPE] || [];
-  };
 
   const addComponent = async () => {
     if (!selectedApplication) return;
 
     try {
+      // Use the component's defined scopes (already populated from component selection)
       const response = await fetch(`/api/admin/applications/${selectedApplication.id}/components`, {
         method: 'POST',
         headers: {
@@ -344,9 +352,32 @@ export default function ApplicationManagement() {
         component_type: 'agent',
         component_id: '',
         component_name: '',
-        scopes: []
+        scopes: [] // Reset to empty - backend will determine scopes
       });
       setShowComponentModal(false);
+      await fetchApplicationDetails(selectedApplication.id);
+    } catch (error: any) {
+      setError(error.message);
+    }
+  };
+
+  const removeComponent = async (componentId: string, componentType: string, componentName: string) => {
+    if (!selectedApplication) return;
+    
+    if (!confirm(`Are you sure you want to remove "${componentName}" from this application?`)) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/admin/applications/${selectedApplication.id}/components/${componentId}?type=${componentType}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to remove component');
+      }
+
       await fetchApplicationDetails(selectedApplication.id);
     } catch (error: any) {
       setError(error.message);
@@ -395,6 +426,8 @@ export default function ApplicationManagement() {
       setNewClient({ serverId: '', name: '', scopes: [] });
       setShowCreateClientModal(false);
       await fetchClients();
+      // After creating client, show selector modal if we came from there
+      setShowClientSelectorModal(true);
     } catch (error: any) {
       setError(error.message);
     }
@@ -443,6 +476,211 @@ export default function ApplicationManagement() {
       setShowSecret(true);
     } catch (error: any) {
       setError(error.message);
+    }
+  };
+
+  const updateScopePrefix = async () => {
+    if (!selectedApplication) return;
+
+    try {
+      const response = await fetch(`/api/admin/applications/${selectedApplication.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          ...selectedApplication,
+          scope_prefix: editingScopePrefix
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to update scope prefix');
+      }
+
+      setSelectedApplication(prev => prev ? { ...prev, scope_prefix: editingScopePrefix } : null);
+      setShowScopePrefixEditor(false);
+      setEditingScopePrefix('');
+    } catch (error: any) {
+      setError(error.message);
+    }
+  };
+
+  const revokePermission = async (clientId: string, clientName?: string) => {
+    if (!selectedApplication) return;
+    
+    if (!confirm(`Are you sure you want to revoke access for "${clientName || clientId}" from this application?`)) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/admin/applications/${selectedApplication.id}/permissions/${clientId}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to revoke permission');
+      }
+
+      await fetchApplicationDetails(selectedApplication.id);
+    } catch (error: any) {
+      setError(error.message);
+    }
+  };
+
+  // Testing functions
+  const testComponentAccess = async (clientId: string, componentType: string, componentId: string, action: string, shouldSucceed: boolean) => {
+    const testKey = `${clientId}-${componentType}-${componentId}-${action}`;
+    setTestingInProgress(prev => ({ ...prev, [testKey]: true }));
+    
+    try {
+      // Get client secret for authentication
+      const secretResponse = await fetch(`/api/admin/clients/${clientId}/secret`);
+      if (!secretResponse.ok) {
+        throw new Error('Failed to get client credentials');
+      }
+      const { secret } = await secretResponse.json();
+
+      // Test OAuth token generation with the specific scope
+      const requestedScope = `${selectedApplication?.name}.${componentType}.${action}`;
+      const tokenResponse = await fetch('/api/auth/token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({
+          grant_type: 'client_credentials',
+          client_id: clientId,
+          client_secret: secret,
+          audience: `${process.env.MASTRA_API_URL || 'agent-client'}/admin`,
+          scope: requestedScope
+        })
+      });
+
+      if (!tokenResponse.ok) {
+        const errorData = await tokenResponse.json();
+        const result = {
+          success: !shouldSucceed, // If we expected failure and got failure, it's a success
+          message: shouldSucceed 
+            ? `❌ Failed to get access token: ${errorData.error || 'Unknown error'}` 
+            : `✅ Correctly denied access token for scope: ${requestedScope}`,
+          timestamp: new Date().toLocaleTimeString()
+        };
+        setTestResults(prev => ({ ...prev, [testKey]: result }));
+        return;
+      }
+
+      const { access_token, scope: grantedScope } = await tokenResponse.json();
+
+      // Verify the token was granted with correct scope
+      const result = {
+        success: shouldSucceed,
+        message: shouldSucceed 
+          ? `✅ Successfully obtained access token for ${componentType}.${action}${grantedScope ? ` (granted: ${grantedScope})` : ''}`
+          : `❌ Incorrectly obtained access token for ${componentType}.${action} - this should have been denied`,
+        timestamp: new Date().toLocaleTimeString()
+      };
+      
+      setTestResults(prev => ({ ...prev, [testKey]: result }));
+    } catch (error: any) {
+      const result = {
+        success: !shouldSucceed,
+        message: shouldSucceed ? `❌ Error: ${error.message}` : `✅ Correctly blocked: ${error.message}`,
+        timestamp: new Date().toLocaleTimeString()
+      };
+      setTestResults(prev => ({ ...prev, [testKey]: result }));
+    } finally {
+      setTestingInProgress(prev => ({ ...prev, [testKey]: false }));
+    }
+  };
+
+  const createTestAgent = async () => {
+    if (!selectedApplication) return;
+
+    try {
+      const testAgentData = {
+        name: `test-agent-restricted-${Date.now()}`,
+        display_name: `Test Agent (Restricted Access)`,
+        instructions: 'This is a test agent created to demonstrate access control restrictions. It should only be accessible to clients with proper scopes.',
+        model: 'gpt-4o-mini',
+        tools: [],
+        scopes: ['agent.read', 'agent.execute'], // Standard agent scopes
+        is_active: true
+      };
+
+      const response = await fetch('/api/admin/agents', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(testAgentData)
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to create test agent');
+      }
+
+      const { agent } = await response.json();
+      
+      // Add the agent to the current application
+      const componentData = {
+        component_type: 'agent',
+        component_id: agent.id,
+        component_name: agent.display_name,
+        scopes: agent.scopes
+      };
+
+      const addResponse = await fetch(`/api/admin/applications/${selectedApplication.id}/components`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(componentData)
+      });
+
+      if (!addResponse.ok) {
+        const errorData = await addResponse.json();
+        throw new Error(errorData.error || 'Failed to add agent to application');
+      }
+
+      // Refresh application details to show the new agent
+      await fetchApplicationDetails(selectedApplication.id);
+      
+      alert(`Created test agent "${agent.display_name}" with restricted access. You can now test access control with this agent.`);
+    } catch (error: any) {
+      setError(error.message);
+    }
+  };
+
+  const runAllTests = async (clientId: string) => {
+    if (!selectedApplication?.components) return;
+    
+    const clientPermission = selectedApplication.clientPermissions?.find(p => p.client_id === clientId);
+    if (!clientPermission) return;
+
+    const allowedScopes = clientPermission.component_scopes;
+
+    // Test positive cases (should succeed)
+    for (const component of selectedApplication.components) {
+      const componentScopes = component.scopes || [];
+      for (const scope of componentScopes) {
+        if (allowedScopes.includes(scope)) {
+          const [action] = scope.split('.').slice(-1);
+          await testComponentAccess(clientId, component.component_type, component.component_id, action, true);
+          await new Promise(resolve => setTimeout(resolve, 500)); // Small delay between tests
+        }
+      }
+    }
+
+    // Test negative cases (should fail) - test a few scopes the client doesn't have
+    for (const component of selectedApplication.components) {
+      const componentScopes = component.scopes || [];
+      const deniedScopes = componentScopes.filter(scope => !allowedScopes.includes(scope));
+      
+      // Test first denied scope for each component
+      if (deniedScopes.length > 0) {
+        const scope = deniedScopes[0];
+        const [action] = scope.split('.').slice(-1);
+        await testComponentAccess(clientId, component.component_type, component.component_id, action, false);
+        await new Promise(resolve => setTimeout(resolve, 500));
+      }
     }
   };
 
@@ -515,14 +753,6 @@ export default function ApplicationManagement() {
                   className="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors"
                 >
                   Add Component
-                </button>
-              )}
-              {activeDetailTab === 'clients' && (
-                <button
-                  onClick={() => setShowPermissionModal(true)}
-                  className="px-4 py-2 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 transition-colors"
-                >
-                  Grant Permission
                 </button>
               )}
             </div>
@@ -641,10 +871,34 @@ export default function ApplicationManagement() {
                 </div>
               </div>
               {selectedApplication.description && (
+              <div className="space-y-4">
+              {selectedApplication.description && (
                 <div className="bg-gray-50 rounded-xl p-4">
                   <h4 className="font-medium text-gray-900 mb-2">Description</h4>
                   <p className="text-gray-700">{selectedApplication.description}</p>
                 </div>
+              )}
+                <div className="bg-blue-50 rounded-xl p-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <h4 className="font-medium text-gray-900">Scope Prefix</h4>
+                    <button
+                      onClick={() => {
+                        setEditingScopePrefix(selectedApplication.scope_prefix || selectedApplication.name);
+                        setShowScopePrefixEditor(true);
+                      }}
+                      className="text-blue-600 hover:text-blue-800 text-sm font-medium"
+                    >
+                      Edit
+                    </button>
+                  </div>
+                  <p className="text-gray-700 font-mono text-sm">
+                    {selectedApplication.scope_prefix || selectedApplication.name}
+                  </p>
+                  <p className="text-xs text-gray-500 mt-1">
+                    This prefix is used for application-scoped permissions (e.g., {selectedApplication.scope_prefix || selectedApplication.name}.agent.read)
+                  </p>
+                </div>
+              </div>
               )}
             </div>
           </div>
@@ -663,15 +917,14 @@ export default function ApplicationManagement() {
                   return (
                     <div 
                       key={component.id} 
-                      onClick={() => handleComponentNavigation(component.component_type, component.component_id)}
-                      className="flex items-center justify-between p-4 bg-gray-50 hover:bg-gray-100 rounded-lg cursor-pointer transition-colors group"
+                        className="flex items-center justify-between p-4 bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors group"
                     >
                       <div className="flex items-center space-x-3">
                         <div className="w-8 h-8 bg-gray-100 group-hover:bg-blue-100 rounded-lg flex items-center justify-center text-gray-600 group-hover:text-blue-600 transition-colors">
                           {typeInfo?.icon}
                         </div>
                         <div>
-                          <p className="font-medium text-gray-900 group-hover:text-blue-600 transition-colors">{component.component_name}</p>
+                            <p className="font-medium text-gray-900">{component.component_name}</p>
                           <p className="text-sm text-gray-500">{typeInfo?.label} • {component.component_id}</p>
                         </div>
                       </div>
@@ -686,9 +939,33 @@ export default function ApplicationManagement() {
                             </span>
                           ))}
                         </div>
-                        <svg className="w-4 h-4 text-gray-400 group-hover:text-blue-600 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                          <div className="flex items-center space-x-1">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleComponentNavigation(component.component_type, component.component_id);
+                              }}
+                              className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                              title="View Component"
+                            >
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                         </svg>
+                            </button>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                removeComponent(component.component_id, component.component_type, component.component_name);
+                              }}
+                              className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                              title="Remove Component"
+                            >
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                              </svg>
+                            </button>
+                          </div>
                       </div>
                     </div>
                   );
@@ -704,137 +981,21 @@ export default function ApplicationManagement() {
         )}
 
         {activeDetailTab === 'clients' && (
-          <div className="space-y-6">
-            {/* Client Management Header */}
             <div className="bg-white/80 backdrop-blur-sm rounded-xl shadow-lg border border-gray-200/50">
               <div className="flex items-center justify-between p-6 border-b border-gray-200/50">
                 <div>
-                  <h3 className="text-lg font-semibold text-gray-900">Client Management</h3>
-                  <p className="text-sm text-gray-500">Manage clients and their application access</p>
+                <h3 className="text-lg font-semibold text-gray-900">Application Access</h3>
+                <p className="text-sm text-gray-500">Clients with access to "{selectedApplication.display_name}"</p>
                 </div>
                 <button
-                  onClick={() => setShowCreateClientModal(true)}
+                onClick={() => setShowClientSelectorModal(true)}
                   className="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors flex items-center space-x-2"
                 >
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
                   </svg>
-                  <span>Create Client</span>
+                <span>Add Client</span>
                 </button>
-              </div>
-            </div>
-
-            {/* All Clients Section */}
-            <div className="bg-white/80 backdrop-blur-sm rounded-xl shadow-lg border border-gray-200/50">
-              <div className="p-6 border-b border-gray-200/50">
-                <h4 className="text-md font-semibold text-gray-900">All Clients</h4>
-                <p className="text-sm text-gray-500">Manage all registered clients in the system</p>
-              </div>
-              <div className="p-6">
-                {clients.length > 0 ? (
-                  <div className="space-y-3">
-                    {clients.map((client) => {
-                      const hasPermission = selectedApplication.clientPermissions?.find(p => p.client_id === client.serverId);
-                      return (
-                        <div key={client.serverId} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                          <div className="flex items-center space-x-3">
-                            <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
-                              hasPermission ? 'bg-green-100' : 'bg-gray-100'
-                            }`}>
-                              <svg className={`w-5 h-5 ${
-                                hasPermission ? 'text-green-600' : 'text-gray-600'
-                              }`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                              </svg>
-                            </div>
-                            <div>
-                              <p className="font-medium text-gray-900">{client.name}</p>
-                              <p className="text-sm text-gray-500">ID: {client.serverId}</p>
-                              <div className="flex flex-wrap gap-1 mt-1">
-                                {client.scopes.slice(0, 3).map((scope) => (
-                                  <span
-                                    key={scope}
-                                    className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800"
-                                  >
-                                    {scope}
-                                  </span>
-                                ))}
-                                {client.scopes.length > 3 && (
-                                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600">
-                                    +{client.scopes.length - 3} more
-                                  </span>
-                                )}
-                              </div>
-                            </div>
-                          </div>
-                          <div className="flex items-center space-x-2">
-                            {hasPermission ? (
-                              <div className="flex items-center space-x-2">
-                                <span className="text-sm text-green-600 font-medium">Has Access</span>
-                                <button
-                                  onClick={() => {
-                                    setSelectedClient(client);
-                                    setShowEditClientModal(true);
-                                  }}
-                                  className="px-3 py-1 bg-blue-100 hover:bg-blue-200 text-blue-700 rounded transition-colors text-sm"
-                                >
-                                  Edit Access
-                                </button>
-                              </div>
-                            ) : (
-                              <button
-                                onClick={() => {
-                                  setNewPermission({ client_id: client.serverId, component_scopes: [] });
-                                  setShowPermissionModal(true);
-                                }}
-                                className="px-3 py-1 bg-green-100 hover:bg-green-200 text-green-700 rounded transition-colors text-sm"
-                              >
-                                Grant Access
-                              </button>
-                            )}
-                            <button
-                              onClick={() => {
-                                setSelectedClient(client);
-                                setShowEditClientModal(true);
-                              }}
-                              className="px-3 py-1 bg-purple-100 hover:bg-purple-200 text-purple-700 rounded transition-colors text-sm"
-                              title="Edit Client"
-                            >
-                              Edit
-                            </button>
-                            <button
-                              onClick={() => handleGetClientSecret(client.serverId)}
-                              className="px-3 py-1 bg-orange-100 hover:bg-orange-200 text-orange-700 rounded transition-colors text-sm"
-                              title="Get Secret"
-                            >
-                              Secret
-                            </button>
-                            <button
-                              onClick={() => handleDeleteClient(client.serverId)}
-                              className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                            >
-                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                              </svg>
-                            </button>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                ) : (
-                  <div className="text-center py-8 text-gray-500">
-                    No clients registered yet. Create your first client to get started.
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Application-Specific Client Permissions */}
-            <div className="bg-white/80 backdrop-blur-sm rounded-xl shadow-lg border border-gray-200/50">
-              <div className="p-6 border-b border-gray-200/50">
-                <h4 className="text-md font-semibold text-gray-900">Application Access</h4>
-                <p className="text-sm text-gray-500">Clients with access to "{selectedApplication.display_name}"</p>
               </div>
               <div className="p-6">
                 {selectedApplication.clientPermissions && selectedApplication.clientPermissions.length > 0 ? (
@@ -865,22 +1026,38 @@ export default function ApplicationManagement() {
                             </div>
                           </div>
                           <div className="flex items-center space-x-2">
-                            <button
-                              onClick={() => {
+                                <button
+                                  onClick={() => {
                                 const client = clients.find(c => c.serverId === permission.client_id);
                                 if (client) {
-                                  setSelectedClient(client);
-                                  setShowEditClientModal(true);
+                                setSelectedClientForPermission(client);
+                                setNewPermission({
+                                  client_id: client.serverId,
+                                  component_scopes: permission.component_scopes
+                                });
+                                setShowPermissionModal(true);
                                 }
-                              }}
-                              className="px-3 py-1 bg-blue-100 hover:bg-blue-200 text-blue-700 rounded transition-colors text-sm"
+                                  }}
+                                  className="px-3 py-1 bg-blue-100 hover:bg-blue-200 text-blue-700 rounded transition-colors text-sm"
+                                >
+                                  Edit Access
+                                </button>
+                              <button
+                              onClick={() => handleGetClientSecret(permission.client_id)}
+                              className="px-3 py-1 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded transition-colors text-sm"
                             >
-                              Edit
+                              View Secret
+                              </button>
+                            <button
+                              onClick={() => handleResetClientSecret(permission.client_id)}
+                              className="px-3 py-1 bg-yellow-100 hover:bg-yellow-200 text-yellow-700 rounded transition-colors text-sm"
+                            >
+                              Reset Secret
                             </button>
                             <button
                               onClick={() => {
-                                // TODO: Add remove permission functionality
-                                console.log('Remove permission for:', permission.client_id);
+                                const client = clients.find(c => c.serverId === permission.client_id);
+                                revokePermission(permission.client_id, client?.name);
                               }}
                               className="px-3 py-1 bg-red-100 hover:bg-red-200 text-red-700 rounded transition-colors text-sm"
                             >
@@ -893,63 +1070,241 @@ export default function ApplicationManagement() {
                   </div>
                 ) : (
                   <div className="text-center py-8 text-gray-500">
-                    No clients have access to this application yet. Grant access to clients from the list above.
+                  No clients have access to this application yet. Click "Add Client" to grant access.
                   </div>
                 )}
               </div>
             </div>
-          </div>
         )}
 
         {activeDetailTab === 'testing' && (
-          <div className="bg-white/80 backdrop-blur-sm rounded-xl shadow-lg border border-gray-200/50">
-            <div className="p-6 border-b border-gray-200/50">
+            <div className="bg-white/80 backdrop-blur-sm rounded-xl shadow-lg border border-gray-200/50">
+              <div className="p-6 border-b border-gray-200/50">
               <h3 className="text-lg font-semibold text-gray-900">Application Testing</h3>
-            </div>
-            <div className="p-6">
-              <div className="bg-blue-50 rounded-lg p-6 border border-blue-100">
-                <h4 className="font-semibold text-gray-900 mb-4 flex items-center space-x-2">
-                  <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  <span>Test Application Access</span>
-                </h4>
-                <p className="text-gray-600 mb-4">
-                  Select a client to test their access to this application's components. This will open a new window where you can interact with agents, run workflows, and test permissions.
-                </p>
-                
+              <p className="text-sm text-gray-600 mt-1">Test client access controls and scope restrictions</p>
+              </div>
+              <div className="p-6">
                 {selectedApplication.clientPermissions && selectedApplication.clientPermissions.length > 0 ? (
-                  <div className="space-y-3">
+                <div className="space-y-6">
+                  {/* Client Selector */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Select Client to Test</label>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     {selectedApplication.clientPermissions.map((permission) => {
                       const client = clients.find(c => c.serverId === permission.client_id);
+                        const isSelected = selectedTestClient === permission.client_id;
                       return (
-                        <div key={permission.id} className="flex items-center justify-between p-4 bg-white rounded-lg shadow-sm">
+                          <div
+                            key={permission.id}
+                            onClick={() => setSelectedTestClient(permission.client_id)}
+                            className={`p-4 rounded-lg border-2 cursor-pointer transition-colors ${
+                              isSelected 
+                                ? 'border-blue-500 bg-blue-50' 
+                                : 'border-gray-200 hover:border-gray-300'
+                            }`}
+                          >
                           <div className="flex items-center space-x-3">
-                            <div className="w-10 h-10 bg-green-600 rounded-lg flex items-center justify-center">
+                              <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+                                isSelected ? 'bg-blue-600' : 'bg-gray-400'
+                              }`}>
                               <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                               </svg>
                             </div>
-                            <div>
+                              <div className="flex-1">
                               <p className="font-medium text-gray-900">{client?.name || permission.client_id}</p>
-                              <p className="text-sm text-gray-500">
-                                {permission.component_scopes.length} scope{permission.component_scopes.length !== 1 ? 's' : ''}: {permission.component_scopes.join(', ')}
-                              </p>
+                                <p className="text-sm text-gray-500">
+                                  {permission.component_scopes.length} scope{permission.component_scopes.length !== 1 ? 's' : ''}
+                                </p>
+                              </div>
                             </div>
+                            {isSelected && (
+                              <div className="mt-3 pt-3 border-t border-blue-200">
+                                <div className="flex flex-wrap gap-1">
+                                  {permission.component_scopes.map(scope => (
+                                    <span key={scope} className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                    {scope}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                            )}
                           </div>
-                          <button 
-                            onClick={() => {
-                              // This will open a testing interface for this client and application
-                              const url = `/test/${selectedApplication.name}?client=${permission.client_id}`;
-                              window.open(url, '_blank');
-                            }}
-                            className="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors"
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Test Controls */}
+                  {selectedTestClient && (
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between">
+                        <h4 className="text-lg font-medium text-gray-900">Access Control Tests</h4>
+                        <div className="flex space-x-3">
+                          <button
+                            onClick={createTestAgent}
+                            className="px-4 py-2 bg-gray-600 text-white rounded-lg font-medium hover:bg-gray-700 transition-colors"
                           >
-                            Test Access
+                            Create Test Agent
+                          </button>
+                          <button
+                            onClick={() => runAllTests(selectedTestClient)}
+                            disabled={Object.values(testingInProgress).some(Boolean)}
+                            className="px-4 py-2 bg-purple-600 text-white rounded-lg font-medium hover:bg-purple-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            {Object.values(testingInProgress).some(Boolean) ? 'Testing...' : 'Run All Tests'}
                           </button>
                         </div>
+                      </div>
+
+                      <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
+                        <div className="flex items-start space-x-2">
+                          <svg className="w-5 h-5 text-blue-600 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                          </svg>
+                          <div className="text-sm">
+                            <p className="font-medium text-blue-900 mb-1">How Testing Works</p>
+                            <p className="text-blue-800">
+                              This tests OAuth token generation with specific scopes. <strong>Green tests</strong> verify the client can get tokens for permitted scopes. 
+                              <strong>Red tests</strong> verify the client is denied tokens for forbidden scopes. Use "Create Test Agent" to add a component with restricted access for testing.
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Test Results */}
+                      <div className="bg-gray-50 rounded-lg p-4">
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                          {/* Positive Tests (Should Succeed) */}
+                          <div>
+                            <h5 className="font-medium text-green-900 mb-3 flex items-center space-x-2">
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                              </svg>
+                              <span>Allowed Access Tests</span>
+                            </h5>
+                            <div className="space-y-2">
+                              {selectedApplication.components?.map(component => {
+                                const clientPermission = selectedApplication.clientPermissions?.find(p => p.client_id === selectedTestClient);
+                                const allowedScopes = clientPermission?.component_scopes || [];
+                                const componentScopes = component.scopes || [];
+                                
+                                return componentScopes
+                                  .filter(scope => allowedScopes.includes(scope))
+                                  .map(scope => {
+                                    const [action] = scope.split('.').slice(-1);
+                                    const testKey = `${selectedTestClient}-${component.component_type}-${component.component_id}-${action}`;
+                                    const result = testResults[testKey];
+                                    const isLoading = testingInProgress[testKey];
+                                    
+                                    return (
+                                      <div key={testKey} className={`p-3 rounded-lg border-l-4 ${
+                                        result 
+                                          ? (result.success ? 'border-green-500 bg-green-50' : 'border-red-500 bg-red-50')
+                                          : 'border-gray-300 bg-white'
+                                      }`}>
+                                        <div className="flex items-center justify-between">
+                                          <div>
+                                            <p className="text-sm font-medium text-gray-900">
+                                              {component.component_name} - {action}
+                                            </p>
+                                            <p className="text-xs text-gray-500">{scope}</p>
+                                          </div>
+                            <button
+                                            onClick={() => testComponentAccess(selectedTestClient, component.component_type, component.component_id, action, true)}
+                                            disabled={isLoading}
+                                            className="px-2 py-1 text-xs bg-blue-100 hover:bg-blue-200 text-blue-700 rounded transition-colors disabled:opacity-50"
+                                          >
+                                            {isLoading ? '...' : 'Test'}
+                            </button>
+                          </div>
+                                        {result && (
+                                          <div className="mt-2 text-xs">
+                                            <p className={result.success ? 'text-green-700' : 'text-red-700'}>
+                                              {result.message}
+                                            </p>
+                                            <p className="text-gray-500">{result.timestamp}</p>
+                  </div>
+                )}
+              </div>
+                                    );
+                                  });
+                              }).flat()}
+            </div>
+          </div>
+
+                          {/* Negative Tests (Should Fail) */}
+                          <div>
+                            <h5 className="font-medium text-red-900 mb-3 flex items-center space-x-2">
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 15.5c-.77.833.192 2.5 1.732 2.5z" />
+                  </svg>
+                              <span>Denied Access Tests</span>
+                            </h5>
+                            <div className="space-y-2">
+                              {selectedApplication.components?.map(component => {
+                                const clientPermission = selectedApplication.clientPermissions?.find(p => p.client_id === selectedTestClient);
+                                const allowedScopes = clientPermission?.component_scopes || [];
+                                const componentScopes = component.scopes || [];
+                                const deniedScopes = componentScopes.filter(scope => !allowedScopes.includes(scope));
+                                
+                                return deniedScopes.slice(0, 1).map(scope => { // Only show first denied scope per component
+                                  const [action] = scope.split('.').slice(-1);
+                                  const testKey = `${selectedTestClient}-${component.component_type}-${component.component_id}-${action}`;
+                                  const result = testResults[testKey];
+                                  const isLoading = testingInProgress[testKey];
+                                  
+                      return (
+                                    <div key={testKey} className={`p-3 rounded-lg border-l-4 ${
+                                      result 
+                                        ? (result.success ? 'border-green-500 bg-green-50' : 'border-red-500 bg-red-50')
+                                        : 'border-gray-300 bg-white'
+                                    }`}>
+                                      <div className="flex items-center justify-between">
+                            <div>
+                                          <p className="text-sm font-medium text-gray-900">
+                                            {component.component_name} - {action}
+                              </p>
+                                          <p className="text-xs text-gray-500">{scope} (should be denied)</p>
+                          </div>
+                          <button 
+                                          onClick={() => testComponentAccess(selectedTestClient, component.component_type, component.component_id, action, false)}
+                                          disabled={isLoading}
+                                          className="px-2 py-1 text-xs bg-red-100 hover:bg-red-200 text-red-700 rounded transition-colors disabled:opacity-50"
+                                        >
+                                          {isLoading ? '...' : 'Test'}
+                          </button>
+                                      </div>
+                                      {result && (
+                                        <div className="mt-2 text-xs">
+                                          <p className={result.success ? 'text-green-700' : 'text-red-700'}>
+                                            {result.message}
+                                          </p>
+                                          <p className="text-gray-500">{result.timestamp}</p>
+                                        </div>
+                                      )}
+                        </div>
                       );
-                    })}
+                                });
+                              }).flat()}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Clear Results */}
+                        {Object.keys(testResults).length > 0 && (
+                          <div className="mt-4 pt-4 border-t border-gray-200">
+                            <button
+                              onClick={() => setTestResults({})}
+                              className="px-3 py-1 text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 rounded transition-colors"
+                            >
+                              Clear Results
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
                   </div>
                 ) : (
                   <div className="text-center py-8">
@@ -962,15 +1317,14 @@ export default function ApplicationManagement() {
                     <button
                       onClick={() => {
                         setActiveDetailTab('clients');
-                        setShowPermissionModal(true);
+                      setShowClientSelectorModal(true);
                       }}
                       className="px-4 py-2 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 transition-colors"
                     >
-                      Grant Client Access
+                    Add Client Access
                     </button>
                   </div>
                 )}
-              </div>
             </div>
           </div>
         )}
@@ -991,7 +1345,7 @@ export default function ApplicationManagement() {
                       component_type: e.target.value as any,
                       component_id: '',
                       component_name: '',
-                      scopes: [] // Reset scopes when type changes
+                      scopes: [] // Will be determined by backend
                     }))}
                     className="w-full border border-gray-300 rounded-lg px-3 py-2"
                   >
@@ -1004,7 +1358,7 @@ export default function ApplicationManagement() {
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Component</label>
                   <select
-                    value={availableComponents.find(c => c.name === newComponent.component_id)?.id || ''}
+                    value={newComponent.component_id}
                     onChange={(e) => handleComponentSelection(e.target.value)}
                     className="w-full border border-gray-300 rounded-lg px-3 py-2"
                     disabled={loadingComponents}
@@ -1026,29 +1380,41 @@ export default function ApplicationManagement() {
                   <label className="block text-sm font-medium text-gray-700 mb-1">Component Name</label>
                   <input
                     type="text"
-                    value={newComponent.component_name}
+                    value={newComponent.component_id}
                     readOnly
                     className="w-full border border-gray-300 rounded-lg px-3 py-2 bg-gray-50"
                     placeholder="Auto-populated from selection"
                   />
                 </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Required Scopes</label>
-                  <div className="space-y-2 max-h-32 overflow-y-auto">
-                    {getAvailableScopes(newComponent.component_type).map(scope => (
-                      <label key={scope} className="flex items-center">
-                        <input
-                          type="checkbox"
-                          checked={newComponent.scopes.includes(scope)}
-                          onChange={() => handleScopeToggle(scope, newComponent.scopes, 
-                            (scopes) => setNewComponent(prev => ({ ...prev, scopes })))}
-                          className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                        />
-                        <span className="ml-2 text-sm text-gray-700">{scope}</span>
-                      </label>
-                    ))}
+                <div className="bg-blue-50 rounded-lg p-3">
+                  <h4 className="font-medium text-gray-900 mb-2">Component Scopes</h4>
+                  <p className="text-sm text-gray-600 mb-2">
+                    This component defines the following scopes:
+                  </p>
+                  <div className="flex flex-wrap gap-1">
+                    {newComponent.component_id ? (
+                      // Show actual component-defined scopes
+                      newComponent.scopes.map(scope => (
+                        <span
+                          key={scope}
+                          className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800"
+                        >
+                          {scope}
+                        </span>
+                      ))
+                    ) : (
+                      // Show placeholder when no component selected
+                      <span className="text-sm text-gray-500 italic">
+                        Select a component to see its defined scopes
+                      </span>
+                    )}
                   </div>
+                  {newComponent.component_id && (
+                    <p className="text-xs text-gray-500 mt-2">
+                      These are the scopes defined by this specific component and will be available for client permissions.
+                    </p>
+                  )}
                 </div>
               </div>
 
@@ -1102,8 +1468,11 @@ export default function ApplicationManagement() {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Global Scopes</label>
+                  <p className="text-xs text-gray-500 mb-2">
+                    These are global client scopes. Application-specific permissions will be configured separately.
+                  </p>
                   <div className="space-y-2 max-h-32 overflow-y-auto">
-                    {CLIENT_SCOPES.map(scope => (
+                    {['admin.read', 'admin.write'].map(scope => (
                       <label key={scope} className="flex items-center">
                         <input
                           type="checkbox"
@@ -1155,28 +1524,6 @@ export default function ApplicationManagement() {
                   />
                 </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Global Scopes</label>
-                  <div className="space-y-2 max-h-32 overflow-y-auto">
-                    {CLIENT_SCOPES.map(scope => (
-                      <label key={scope} className="flex items-center">
-                        <input
-                          type="checkbox"
-                          checked={selectedClient.scopes.includes(scope)}
-                          onChange={() => {
-                            const newScopes = selectedClient.scopes.includes(scope)
-                              ? selectedClient.scopes.filter(s => s !== scope)
-                              : [...selectedClient.scopes, scope];
-                            setSelectedClient(prev => prev ? { ...prev, scopes: newScopes } : null);
-                          }}
-                          className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                        />
-                        <span className="ml-2 text-sm text-gray-700">{scope}</span>
-                      </label>
-                    ))}
-                  </div>
-                </div>
-              </div>
 
               <div className="space-y-4">
                 {/* Client Secret Management */}
@@ -1220,6 +1567,7 @@ export default function ApplicationManagement() {
                   Cancel
                 </button>
               </div>
+              </div>
             </div>
           </div>
         )}
@@ -1228,7 +1576,9 @@ export default function ApplicationManagement() {
         {showPermissionModal && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
             <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Grant Client Permission</h3>
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                {selectedClientForPermission ? 'Edit Client Permission' : 'Grant Client Permission'}
+              </h3>
               
               <div className="space-y-4">
                 <div>
@@ -1237,6 +1587,7 @@ export default function ApplicationManagement() {
                     value={newPermission.client_id}
                     onChange={(e) => setNewPermission(prev => ({ ...prev, client_id: e.target.value }))}
                     className="w-full border border-gray-300 rounded-lg px-3 py-2"
+                    disabled={!!selectedClientForPermission}
                   >
                     <option value="">Select a client...</option>
                     {clients.map(client => (
@@ -1248,9 +1599,13 @@ export default function ApplicationManagement() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Component Scopes</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Application Scopes</label>
                   <div className="space-y-2 max-h-32 overflow-y-auto">
-                    {CLIENT_SCOPES.map(scope => (
+                    {selectedApplication?.components && selectedApplication.components.length > 0 ? (
+                      // Show scopes from actual application components
+                      Array.from(new Set(
+                        selectedApplication.components.flatMap(component => component.scopes)
+                      )).map(scope => (
                       <label key={scope} className="flex items-center">
                         <input
                           type="checkbox"
@@ -1261,7 +1616,12 @@ export default function ApplicationManagement() {
                         />
                         <span className="ml-2 text-sm text-gray-700">{scope}</span>
                       </label>
-                    ))}
+                      ))
+                    ) : (
+                      <p className="text-sm text-gray-500 italic">
+                        No components in this application yet. Add components first to see available scopes.
+                      </p>
+                    )}
                   </div>
                 </div>
               </div>
@@ -1272,10 +1632,150 @@ export default function ApplicationManagement() {
                   disabled={!newPermission.client_id || newPermission.component_scopes.length === 0}
                   className="flex-1 bg-green-600 text-white py-2 rounded-lg font-medium hover:bg-green-700 disabled:opacity-50 transition-colors"
                 >
-                  Grant Permission
+                  {selectedClientForPermission ? 'Update Permission' : 'Grant Permission'}
                 </button>
                 <button
-                  onClick={() => setShowPermissionModal(false)}
+                  onClick={() => {
+                    setShowPermissionModal(false);
+                    setSelectedClientForPermission(null);
+                  }}
+                  className="flex-1 bg-gray-300 text-gray-700 py-2 rounded-lg font-medium hover:bg-gray-400 transition-colors"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Client Selector Modal */}
+        {showClientSelectorModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg p-6 w-full max-w-2xl mx-4">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Add Client Access</h3>
+              
+              <div className="space-y-4">
+                <div className="border-b pb-4">
+                  <h4 className="font-medium text-gray-900 mb-3">Existing Clients</h4>
+                  {clients.length > 0 ? (
+                    <div className="space-y-2 max-h-48 overflow-y-auto">
+                      {clients
+                        .filter(client => !selectedApplication.clientPermissions?.find(p => p.client_id === client.serverId))
+                        .map((client) => (
+                          <div key={client.serverId} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                            <div className="flex items-center space-x-3">
+                              <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
+                                <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                                </svg>
+                              </div>
+                              <div>
+                                <p className="font-medium text-gray-900">{client.name}</p>
+                                <p className="text-sm text-gray-500">{client.serverId}</p>
+                              </div>
+                            </div>
+                            <button
+                              onClick={() => {
+                                setNewPermission({ client_id: client.serverId, component_scopes: [] });
+                                setShowClientSelectorModal(false);
+                                setShowPermissionModal(true);
+                              }}
+                              className="px-3 py-1 bg-green-100 hover:bg-green-200 text-green-700 rounded transition-colors text-sm"
+                            >
+                              Grant Access
+                            </button>
+                          </div>
+                        ))
+                      }
+                      {clients.every(client => selectedApplication.clientPermissions?.find(p => p.client_id === client.serverId)) && (
+                        <div className="text-center py-4 text-gray-500">
+                          All existing clients already have access to this application.
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="text-center py-4 text-gray-500">
+                      No clients found.
+                    </div>
+                  )}
+                </div>
+
+                <div>
+                  <h4 className="font-medium text-gray-900 mb-3">Create New Client</h4>
+                  <button
+                    onClick={() => {
+                      setShowClientSelectorModal(false);
+                      setShowCreateClientModal(true);
+                    }}
+                    className="w-full p-4 border-2 border-dashed border-gray-300 rounded-lg hover:border-blue-400 hover:bg-blue-50 transition-colors flex items-center justify-center space-x-2 text-gray-600 hover:text-blue-600"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                    </svg>
+                    <span>Create New Client</span>
+                  </button>
+                </div>
+              </div>
+
+              <div className="flex space-x-3 mt-6">
+                <button
+                  onClick={() => setShowClientSelectorModal(false)}
+                  className="flex-1 bg-gray-300 text-gray-700 py-2 rounded-lg font-medium hover:bg-gray-400 transition-colors"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Scope Prefix Editor Modal */}
+        {showScopePrefixEditor && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Edit Scope Prefix</h3>
+              
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Scope Prefix</label>
+                  <input
+                    type="text"
+                    value={editingScopePrefix}
+                    onChange={(e) => setEditingScopePrefix(e.target.value)}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 font-mono"
+                    placeholder="e.g., weather-app"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    This will be used as the prefix for all application scopes (e.g., {editingScopePrefix || 'prefix'}.agent.read)
+                  </p>
+                </div>
+                
+                <div className="bg-blue-50 rounded-lg p-3">
+                  <h4 className="font-medium text-gray-900 mb-2">Preview Scopes:</h4>
+                  <div className="space-y-1 text-sm font-mono">
+                    {['agent', 'workflow', 'tool'].map(component => (
+                      <div key={component} className="text-gray-600">
+                        {editingScopePrefix || 'prefix'}.{component}.read
+                      </div>
+                    ))}
+                    <div className="text-gray-400">... and more component types</div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex space-x-3 mt-6">
+                <button
+                  onClick={updateScopePrefix}
+                  disabled={!editingScopePrefix.trim()}
+                  className="flex-1 bg-blue-600 text-white py-2 rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors"
+                >
+                  Update Prefix
+                </button>
+                <button
+                  onClick={() => {
+                    setShowScopePrefixEditor(false);
+                    setEditingScopePrefix('');
+                  }}
                   className="flex-1 bg-gray-300 text-gray-700 py-2 rounded-lg font-medium hover:bg-gray-400 transition-colors"
                 >
                   Cancel

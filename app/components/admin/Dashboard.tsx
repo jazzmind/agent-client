@@ -50,13 +50,13 @@ export default function Dashboard() {
       <div className="flex items-center justify-between">
         <div>
           <p className="text-gray-600 text-sm font-medium">{title}</p>
-          <p className="text-3xl font-bold text-gray-900 mt-2">
+          <div className="text-3xl font-bold text-gray-900 mt-2">
             {loading ? (
               <div className="w-16 h-8 bg-gray-200 animate-pulse rounded"></div>
             ) : (
               value
             )}
-          </p>
+          </div>
           {change && (
             <p className="text-sm text-green-600 mt-1 flex items-center">
               <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
