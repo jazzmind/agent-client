@@ -43,7 +43,7 @@ export async function GET(request: NextRequest) {
     
     const authHeaders = await getAdminHeaders();
     
-    const response = await fetch(`${baseUrl}/agents${queryString ? `?${queryString}` : ''}`, {
+    const response = await fetch(`${baseUrl}/api/agents${queryString ? `?${queryString}` : ''}`, {
       method: 'GET',
       headers: authHeaders,
     });
