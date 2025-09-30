@@ -13,7 +13,7 @@ export async function GET(request: NextRequest) {
     // Build query string for the backend request
     const queryString = componentType ? `?type=${encodeURIComponent(componentType)}` : '';
     
-    const response = await fetch(`${baseUrl}/components${queryString}`, {
+    const response = await fetch(`${baseUrl}/admin/components${queryString}`, {
       method: 'GET',
       headers: authHeaders
     });
@@ -59,7 +59,7 @@ export async function POST(
 
     const authHeaders = await getAdminHeaders();
     
-    const response = await fetch(`${baseUrl}/components/applications/${applicationId}`, {
+    const response = await fetch(`${baseUrl}/admin/components/applications/${applicationId}`, {
       method: 'POST',
       headers: {
         ...authHeaders,

@@ -52,7 +52,7 @@ export async function POST(request: NextRequest) {
       console.error('Mastra client error:', mastraError);
       
       // Fallback: try direct API call to the agent server
-      const response = await fetch(`${baseUrl}/api/agents/${agentId}/chat`, {
+      const response = await fetch(`${baseUrl}/admin/agents/${agentId}/chat`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,

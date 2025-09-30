@@ -18,7 +18,7 @@ export async function DELETE(
     }
 
     const headers = await getAdminHeaders();
-    const response = await fetch(`${AGENT_SERVER_URL}/clients/${clientId}`, {
+    const response = await fetch(`${AGENT_SERVER_URL}/admin/clients/${clientId}`, {
       method: 'DELETE',
       headers,
     });
@@ -64,7 +64,7 @@ export async function PATCH(
     }
 
     const headers = await getAdminHeaders();
-    const response = await fetch(`${AGENT_SERVER_URL}/clients/${clientId}`, {
+    const response = await fetch(`${AGENT_SERVER_URL}/admin/clients/${clientId}`, {
       method: 'PATCH',
       headers: {
         ...headers,

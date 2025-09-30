@@ -28,7 +28,7 @@ export async function DELETE(
 
     const authHeaders = await getAdminHeaders();
     
-    const response = await fetch(`${baseUrl}/components/applications/${applicationId}/${componentType}/${componentId}`, {
+    const response = await fetch(`${baseUrl}/admin/components/applications/${applicationId}/${componentType}/${componentId}`, {
       method: 'DELETE',
       headers: authHeaders
     });

@@ -20,7 +20,7 @@ export async function GET(
 
     const authHeaders = await getAdminHeaders();
     
-    const response = await fetch(`${baseUrl}/clients/${clientId}/secret`, {
+    const response = await fetch(`${baseUrl}/admin/clients/${clientId}/secret`, {
       method: 'GET',
       headers: authHeaders
     });
@@ -61,11 +61,11 @@ export async function POST(
 
     const authHeaders = await getAdminHeaders();
     
-    const response = await fetch(`${baseUrl}/clients/${clientId}/secret`, {
+    const response = await fetch(`${baseUrl}/admin/clients/${clientId}/secret`, {
       method: 'POST',
       headers: authHeaders
     });
-
+  
     if (!response.ok) {
       if (response.status === 404) {
         return NextResponse.json({ error: 'Client not found' }, { status: 404 });

@@ -168,9 +168,22 @@ export async function createAgent(agentData: {
 export async function updateAgent(agentId: string, agentData: {
   name?: string;
   displayName?: string;
+  description?: string;
   instructions?: string;
   model?: string;
+  maxRetries?: number;
   tools?: string[];
+  workflows?: string[];
+  agents?: string[];
+  scorers?: string[];
+  evals?: Record<string, any>;
+  memoryConfig?: Record<string, any>;
+  voiceConfig?: Record<string, any>;
+  inputProcessors?: string[];
+  outputProcessors?: string[];
+  defaultGenerateOptions?: Record<string, any>;
+  defaultStreamOptions?: Record<string, any>;
+  telemetryEnabled?: boolean;
   scopes?: string[];
   isActive?: boolean;
 }) {
@@ -361,5 +374,50 @@ export async function deleteScorer(scorerId: string) {
   const response = await fetch(`/api/admin/scorers/${scorerId}`, {
     method: 'DELETE',
   });
+  return handleResponse(response);
+}
+
+// ==========================================================================
+// RESOURCES API
+// ==========================================================================
+
+/**
+ * Get available tools for agent configuration
+ */
+export async function getAvailableTools() {
+  const response = await fetch('/api/admin/resources/tools');
+  return handleResponse(response);
+}
+
+/**
+ * Get available workflows for agent configuration
+ */
+export async function getAvailableWorkflows() {
+  const response = await fetch('/api/admin/resources/workflows');
+  return handleResponse(response);
+}
+
+/**
+ * Get available scorers for agent configuration
+ */
+export async function getAvailableScorers() {
+  const response = await fetch('/api/admin/resources/scorers');
+  return handleResponse(response);
+}
+
+/**
+ * Get available agents for referencing in other agents
+ */
+export async function getAvailableAgents(excludeId?: string) {
+  const url = `/api/admin/resources/agents${excludeId ? `?exclude=${excludeId}` : ''}`;
+  const response = await fetch(url);
+  return handleResponse(response);
+}
+
+/**
+ * Get available processors for agent configuration
+ */
+export async function getAvailableProcessors() {
+  const response = await fetch('/api/admin/resources/processors');
   return handleResponse(response);
 }

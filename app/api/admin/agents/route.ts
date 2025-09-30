@@ -10,7 +10,7 @@ export async function POST(request: NextRequest) {
     
     const authHeaders = await getAdminHeaders();
     
-    const response = await fetch(`${baseUrl}/agents`, {
+    const response = await fetch(`${baseUrl}/admin/agents`, {
       method: 'POST',
       headers: {
         ...authHeaders,
@@ -43,7 +43,7 @@ export async function GET(request: NextRequest) {
     
     const authHeaders = await getAdminHeaders();
     
-    const response = await fetch(`${baseUrl}/api/agents${queryString ? `?${queryString}` : ''}`, {
+    const response = await fetch(`${baseUrl}/admin/agents${queryString ? `?${queryString}` : ''}`, {
       method: 'GET',
       headers: authHeaders,
     });

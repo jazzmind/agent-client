@@ -16,6 +16,7 @@ export async function POST(request: NextRequest) {
     const accessToken = await getAccessToken({
       clientId,
       clientSecret,
+      audience: 'https://tools.local/weather',
       scope: 'agent.read agent.execute workflow.execute tool.execute', // Request common scopes
     });
 

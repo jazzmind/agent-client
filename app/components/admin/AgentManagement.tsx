@@ -2,7 +2,16 @@
 
 import { useState, useEffect } from 'react';
 import { MODELS } from '@/lib/models';
-import { listAgents, deleteAgent, updateAgent } from '../../../lib/admin-client';
+import { 
+  listAgents, 
+  deleteAgent, 
+  updateAgent, 
+  getAvailableTools,
+  getAvailableWorkflows,
+  getAvailableScorers,
+  getAvailableAgents,
+  getAvailableProcessors
+} from '../../../lib/admin-client';
 
 interface Agent {
   id: string;
@@ -10,12 +19,27 @@ interface Agent {
   display_name?: string;
   description?: string;
   model: string;
+  max_retries?: number;
   instructions: string;
   tools: string[];
+  workflows?: string[];
+  agents?: string[];
+  scorers?: string[];
+  evals?: Record<string, any>;
+  memory_config?: Record<string, any>;
+  voice_config?: Record<string, any>;
+  input_processors?: string[];
+  output_processors?: string[];
+  default_generate_options?: Record<string, any>;
+  default_stream_options?: Record<string, any>;
+  telemetry_enabled?: boolean;
   scopes: string[];
   is_active: boolean;
   created_at: string;
   updated_at?: string;
+  source: 'hardcoded' | 'database';
+  editable: boolean;
+  deletable: boolean;
 }
 
 export default function AgentManagement() {
@@ -25,10 +49,25 @@ export default function AgentManagement() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  
+  // Available resources for configuration
+  const [availableTools, setAvailableTools] = useState<any[]>([]);
+  const [availableWorkflows, setAvailableWorkflows] = useState<any[]>([]);
+  const [availableScorers, setAvailableScorers] = useState<any[]>([]);
+  const [availableAgents, setAvailableAgents] = useState<any[]>([]);
+  const [availableProcessors, setAvailableProcessors] = useState<any[]>([]);
+  const [resourcesLoading, setResourcesLoading] = useState(false);
 
   useEffect(() => {
     loadAgents();
   }, []);
+
+  // Load available resources when editing an agent
+  useEffect(() => {
+    if (selectedAgent && selectedAgent.editable) {
+      loadAvailableResources();
+    }
+  }, [selectedAgent]);
 
   // Check for component parameter in URL to auto-select agent
   useEffect(() => {
@@ -49,22 +88,10 @@ export default function AgentManagement() {
       setLoading(true);
       const data = await listAgents();
       console.log('Agents data received:', data);
-      // The data is coming back as an object with agent properties, not an array
-      if (data && typeof data === 'object') {
-        const agentsList = Object.entries(data).map(([key, value]: [string, any]) => ({
-          id: key,
-          name: key,
-          display_name: value.name || key,
-          description: value.instructions?.substring(0, 200) + '...' || 'No description available',
-          model: value.modelId || value.model || 'unknown',
-          instructions: value.instructions || '',
-          tools: Object.keys(value.tools || {}),
-          scopes: [], // This would need to come from somewhere else
-          is_active: true, // Default to active
-          created_at: new Date().toISOString(), // Default to now
-          updated_at: new Date().toISOString()
-        }));
-        setAgents(agentsList);
+      
+      // The API now returns { agents: Agent[] } with full agent data including source info
+      if (data && data.agents && Array.isArray(data.agents)) {
+        setAgents(data.agents);
       } else {
         setAgents([]);
       }
@@ -76,7 +103,38 @@ export default function AgentManagement() {
     }
   };
 
-  const handleDeleteAgent = async (agentId: string) => {
+  const loadAvailableResources = async () => {
+    try {
+      setResourcesLoading(true);
+      
+      // Load all resources in parallel
+      const [toolsData, workflowsData, scorersData, agentsData, processorsData] = await Promise.all([
+        getAvailableTools(),
+        getAvailableWorkflows(),
+        getAvailableScorers(),
+        getAvailableAgents(selectedAgent?.id),
+        getAvailableProcessors()
+      ]);
+      
+      setAvailableTools(toolsData.tools || []);
+      setAvailableWorkflows(workflowsData.workflows || []);
+      setAvailableScorers(scorersData.scorers || []);
+      setAvailableAgents(agentsData.agents || []);
+      setAvailableProcessors(processorsData.processors || []);
+    } catch (err) {
+      console.error('Failed to load available resources:', err);
+      setError(err instanceof Error ? err.message : 'Failed to load resources');
+    } finally {
+      setResourcesLoading(false);
+    }
+  };
+
+  const handleDeleteAgent = async (agentId: string, agent: Agent) => {
+    if (!agent.deletable) {
+      setError('Cannot delete hardcoded agents');
+      return;
+    }
+    
     if (!confirm('Are you sure you want to delete this agent?')) return;
     
     try {
@@ -91,13 +149,31 @@ export default function AgentManagement() {
   const handleSaveAgent = async () => {
     if (!selectedAgent) return;
     
+    if (!selectedAgent.editable) {
+      setError('Cannot edit hardcoded agents');
+      return;
+    }
+    
     try {
       await updateAgent(selectedAgent.id, {
         name: selectedAgent.name,
         displayName: selectedAgent.display_name,
+        description: selectedAgent.description,
         instructions: selectedAgent.instructions,
         model: selectedAgent.model,
+        maxRetries: selectedAgent.max_retries,
         tools: selectedAgent.tools,
+        workflows: selectedAgent.workflows,
+        agents: selectedAgent.agents,
+        scorers: selectedAgent.scorers,
+        evals: selectedAgent.evals,
+        memoryConfig: selectedAgent.memory_config,
+        voiceConfig: selectedAgent.voice_config,
+        inputProcessors: selectedAgent.input_processors,
+        outputProcessors: selectedAgent.output_processors,
+        defaultGenerateOptions: selectedAgent.default_generate_options,
+        defaultStreamOptions: selectedAgent.default_stream_options,
+        telemetryEnabled: selectedAgent.telemetry_enabled,
         scopes: selectedAgent.scopes,
         isActive: selectedAgent.is_active
       });
@@ -128,17 +204,25 @@ export default function AgentManagement() {
             <p className="text-sm text-gray-500">{agent.model}</p>
           </div>
         </div>
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            handleDeleteAgent(agent.id);
-          }}
-          className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-        >
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-          </svg>
-        </button>
+        {agent.deletable ? (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              handleDeleteAgent(agent.id, agent);
+            }}
+            className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+            </svg>
+          </button>
+        ) : (
+          <div className="p-2 text-gray-300 rounded-lg">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+            </svg>
+          </div>
+        )}
       </div>
       
       {agent.description && (
@@ -147,12 +231,21 @@ export default function AgentManagement() {
       
       <div className="flex items-center justify-between text-sm text-gray-500 mb-2">
         <span>{agent.tools?.length || 0} tools</span>
-        <div className={`px-2 py-1 rounded-full text-xs font-medium ${
-          agent.is_active 
-            ? 'bg-green-100 text-green-800' 
-            : 'bg-gray-100 text-gray-800'
-        }`}>
-          {agent.is_active ? 'Active' : 'Inactive'}
+        <div className="flex items-center space-x-2">
+          <div className={`px-2 py-1 rounded-full text-xs font-medium ${
+            agent.source === 'hardcoded' 
+              ? 'bg-blue-100 text-blue-800' 
+              : 'bg-purple-100 text-purple-800'
+          }`}>
+            {agent.source === 'hardcoded' ? 'Built-in' : 'Custom'}
+          </div>
+          <div className={`px-2 py-1 rounded-full text-xs font-medium ${
+            agent.is_active 
+              ? 'bg-green-100 text-green-800' 
+              : 'bg-gray-100 text-gray-800'
+          }`}>
+            {agent.is_active ? 'Active' : 'Inactive'}
+          </div>
         </div>
       </div>
       
@@ -192,24 +285,44 @@ export default function AgentManagement() {
               </div>
             </div>
             <div className="flex items-center space-x-2">
-              <button
-                onClick={isEditing ? handleSaveAgent : () => setIsEditing(true)}
-                className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                  isEditing 
-                    ? 'bg-green-600 text-white hover:bg-green-700' 
-                    : 'bg-blue-600 text-white hover:bg-blue-700'
-                }`}
-              >
-                {isEditing ? 'Save Changes' : 'Edit Agent'}
-              </button>
-              <button 
-                onClick={() => handleDeleteAgent(selectedAgent.id)}
-                className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                </svg>
-              </button>
+              {/* Source badge */}
+              <div className={`px-3 py-1 rounded-lg text-sm font-medium ${
+                selectedAgent.source === 'hardcoded' 
+                  ? 'bg-blue-100 text-blue-800' 
+                  : 'bg-purple-100 text-purple-800'
+              }`}>
+                {selectedAgent.source === 'hardcoded' ? 'Built-in Agent' : 'Custom Agent'}
+              </div>
+              
+              {selectedAgent.editable && (
+                <button
+                  onClick={isEditing ? handleSaveAgent : () => setIsEditing(true)}
+                  className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                    isEditing 
+                      ? 'bg-green-600 text-white hover:bg-green-700' 
+                      : 'bg-blue-600 text-white hover:bg-blue-700'
+                  }`}
+                >
+                  {isEditing ? 'Save Changes' : 'Edit Agent'}
+                </button>
+              )}
+              
+              {!selectedAgent.editable && (
+                <span className="px-4 py-2 text-sm text-gray-500 bg-gray-100 rounded-lg">
+                  Read-only
+                </span>
+              )}
+              
+              {selectedAgent.deletable && (
+                <button 
+                  onClick={() => handleDeleteAgent(selectedAgent.id, selectedAgent)}
+                  className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                  </svg>
+                </button>
+              )}
             </div>
           </div>
         </div>
@@ -228,7 +341,7 @@ export default function AgentManagement() {
                   type="text"
                   value={selectedAgent.name}
                   onChange={(e) => setSelectedAgent(prev => prev ? { ...prev, name: e.target.value } : null)}
-                  disabled={!isEditing}
+                  disabled={!isEditing || !selectedAgent.editable}
                   className="w-full border border-gray-300 rounded-lg px-3 py-2 disabled:bg-gray-50 disabled:text-gray-500"
                 />
               </div>
@@ -238,7 +351,7 @@ export default function AgentManagement() {
                   type="text"
                   value={selectedAgent.display_name || ''}
                   onChange={(e) => setSelectedAgent(prev => prev ? { ...prev, display_name: e.target.value } : null)}
-                  disabled={!isEditing}
+                  disabled={!isEditing || !selectedAgent.editable}
                   className="w-full border border-gray-300 rounded-lg px-3 py-2 disabled:bg-gray-50 disabled:text-gray-500"
                 />
               </div>
@@ -250,7 +363,7 @@ export default function AgentManagement() {
                 <select
                   value={selectedAgent.model}
                   onChange={(e) => setSelectedAgent(prev => prev ? { ...prev, model: e.target.value } : null)}
-                  disabled={!isEditing}
+                  disabled={!isEditing || !selectedAgent.editable}
                   className="w-full border border-gray-300 rounded-lg px-3 py-2 disabled:bg-gray-50 disabled:text-gray-500"
                 >
                   <option value={MODELS.default.model}>Default ({MODELS.default.model})</option>
@@ -266,7 +379,7 @@ export default function AgentManagement() {
                     type="checkbox"
                     checked={selectedAgent.is_active}
                     onChange={(e) => setSelectedAgent(prev => prev ? { ...prev, is_active: e.target.checked } : null)}
-                    disabled={!isEditing}
+                    disabled={!isEditing || !selectedAgent.editable}
                     className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
                   />
                   <span className="text-sm text-gray-700">Active Agent</span>
@@ -398,7 +511,33 @@ export default function AgentManagement() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-5 gap-6">
+        <div className="bg-white/80 backdrop-blur-sm rounded-xl p-6 shadow-lg border border-gray-200/50">
+          <div className="flex items-center space-x-3">
+            <div className="w-12 h-12 bg-blue-600 rounded-lg flex items-center justify-center">
+              <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 7.172V5L8 4z" />
+              </svg>
+            </div>
+            <div>
+              <p className="text-sm text-gray-600">Built-in</p>
+              <p className="text-2xl font-bold text-gray-900">{agents.filter(a => a.source === 'hardcoded').length}</p>
+            </div>
+          </div>
+        </div>
+        <div className="bg-white/80 backdrop-blur-sm rounded-xl p-6 shadow-lg border border-gray-200/50">
+          <div className="flex items-center space-x-3">
+            <div className="w-12 h-12 bg-purple-600 rounded-lg flex items-center justify-center">
+              <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4" />
+              </svg>
+            </div>
+            <div>
+              <p className="text-sm text-gray-600">Custom</p>
+              <p className="text-2xl font-bold text-gray-900">{agents.filter(a => a.source === 'database').length}</p>
+            </div>
+          </div>
+        </div>
         <div className="bg-white/80 backdrop-blur-sm rounded-xl p-6 shadow-lg border border-gray-200/50">
           <div className="flex items-center space-x-3">
             <div className="w-12 h-12 bg-green-600 rounded-lg flex items-center justify-center">
@@ -414,20 +553,7 @@ export default function AgentManagement() {
         </div>
         <div className="bg-white/80 backdrop-blur-sm rounded-xl p-6 shadow-lg border border-gray-200/50">
           <div className="flex items-center space-x-3">
-            <div className="w-12 h-12 bg-gray-600 rounded-lg flex items-center justify-center">
-              <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-            </div>
-            <div>
-              <p className="text-sm text-gray-600">Inactive</p>
-              <p className="text-2xl font-bold text-gray-900">{agents.filter(a => !a.is_active).length}</p>
-            </div>
-          </div>
-        </div>
-        <div className="bg-white/80 backdrop-blur-sm rounded-xl p-6 shadow-lg border border-gray-200/50">
-          <div className="flex items-center space-x-3">
-            <div className="w-12 h-12 bg-blue-600 rounded-lg flex items-center justify-center">
+            <div className="w-12 h-12 bg-orange-600 rounded-lg flex items-center justify-center">
               <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z" />
               </svg>
@@ -440,7 +566,7 @@ export default function AgentManagement() {
         </div>
         <div className="bg-white/80 backdrop-blur-sm rounded-xl p-6 shadow-lg border border-gray-200/50">
           <div className="flex items-center space-x-3">
-            <div className="w-12 h-12 bg-purple-600 rounded-lg flex items-center justify-center">
+            <div className="w-12 h-12 bg-indigo-600 rounded-lg flex items-center justify-center">
               <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />

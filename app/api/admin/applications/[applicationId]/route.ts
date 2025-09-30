@@ -19,7 +19,7 @@ export async function GET(
 
     const authHeaders = await getAdminHeaders();
     
-    const response = await fetch(`${baseUrl}/applications/${applicationId}`, {
+    const response = await fetch(`${baseUrl}/admin/applications/${applicationId}`, {
       method: 'GET',
       headers: authHeaders
     });
@@ -60,7 +60,7 @@ export async function PUT(
 
     const authHeaders = await getAdminHeaders();
     
-    const response = await fetch(`${baseUrl}/applications/${applicationId}`, {
+    const response = await fetch(`${baseUrl}/admin/applications/${applicationId}`, {
       method: 'PUT',
       headers: {
         ...authHeaders,
@@ -104,7 +104,7 @@ export async function DELETE(
 
     const authHeaders = await getAdminHeaders();
     
-    const response = await fetch(`${baseUrl}/applications/${applicationId}`, {
+    const response = await fetch(`${baseUrl}/admin/applications/${applicationId}`, {
       method: 'DELETE',
       headers: authHeaders
     });

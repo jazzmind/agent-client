@@ -7,7 +7,7 @@ export async function GET() {
   try {
     const authHeaders = await getAdminHeaders();
     
-    const response = await fetch(`${AGENT_SERVER_URL}/applications`, {
+    const response = await fetch(`${AGENT_SERVER_URL}/admin/applications`, {
       method: 'GET',
       headers: authHeaders
     });

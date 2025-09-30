@@ -47,7 +47,7 @@ export async function GET(request: NextRequest) {
       console.error('Mastra client error:', mastraError);
       
       // Fallback to direct API call if Mastra client fails
-      const response = await fetch(`${baseUrl}/api/agents`, {
+      const response = await fetch(`${baseUrl}/admin/agents`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'

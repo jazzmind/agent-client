@@ -45,7 +45,7 @@ export async function GET(
     
     // Fallback to direct fetch
     const headers = await getAdminHeaders();
-    const response = await fetch(`${AGENT_SERVER_URL}/api/${method}/${id}`, {
+    const response = await fetch(`${AGENT_SERVER_URL}/admin/${method}/${id}`, {
       method: 'GET',
       headers,
     });
@@ -74,42 +74,42 @@ export async function PUT(
     const methodData = await request.json();
     
     // Try MastraClient first, with fallback to direct fetch
-    try {
-      const mastraClient = await getAdminMastraClient();
+    // try {
+    //   const mastraClient = await getAdminMastraClient();
       
-      // Handle each method explicitly to avoid TypeScript issues
-      let result;
-      switch (method) {
-        case 'agents':
-          result = await (mastraClient as any).updateAgent(id, methodData);
-          break;
-        case 'workflows':
-          result = await (mastraClient as any).updateWorkflow(id, methodData);
-          break;
-        case 'tools':
-          result = await (mastraClient as any).updateTool(id, methodData);
-          break;
-        case 'clients':
-          result = await (mastraClient as any).updateClient(id, methodData);
-          break;
-        case 'scorers':
-          // Scorers likely not supported in MastraClient yet, will fall through to fetch
-          result = null;
-          break;
-        default:
-          result = null;
-      }
+    //   // Handle each method explicitly to avoid TypeScript issues
+    //   let result;
+    //   switch (method) {
+    //     case 'agents':
+    //       result = await (mastraClient as any).updateAgent(id, methodData);
+    //       break;
+    //     case 'workflows':
+    //       result = await (mastraClient as any).updateWorkflow(id, methodData);
+    //       break;
+    //     case 'tools':
+    //       result = await (mastraClient as any).updateTool(id, methodData);
+    //       break;
+    //     case 'clients':
+    //       result = await (mastraClient as any).updateClient(id, methodData);
+    //       break;
+    //     case 'scorers':
+    //       // Scorers likely not supported in MastraClient yet, will fall through to fetch
+    //       result = null;
+    //       break;
+    //     default:
+    //       result = null;
+    //   }
       
-      if (result) {
-        return NextResponse.json(result);
-      }
-    } catch (error) {
-      console.log(`MastraClient update method failed for ${method}/${id}, falling back to fetch:`, error);
-    }
+    //   if (result) {
+    //     return NextResponse.json(result);
+    //   }
+    // } catch (error) {
+    //   console.log(`MastraClient update method failed for ${method}/${id}, falling back to fetch:`, error);
+    // }
     
     // Fallback to direct fetch
     const headers = await getAdminHeaders();
-    const response = await fetch(`${AGENT_SERVER_URL}/api/${method}/${id}`, {
+    const response = await fetch(`${AGENT_SERVER_URL}/admin/${method}/${id}`, {
       method: 'PUT',
       headers,
       body: JSON.stringify(methodData),
@@ -139,42 +139,42 @@ export async function PATCH(
     const methodData = await request.json();
     
     // Try MastraClient first, with fallback to direct fetch
-    try {
-      const mastraClient = await getAdminMastraClient();
+    // try {
+    //   const mastraClient = await getAdminMastraClient();
       
-      // Handle each method explicitly to avoid TypeScript issues
-      let result;
-      switch (method) {
-        case 'agents':
-          result = await (mastraClient as any).patchAgent(id, methodData);
-          break;
-        case 'workflows':
-          result = await (mastraClient as any).patchWorkflow(id, methodData);
-          break;
-        case 'tools':
-          result = await (mastraClient as any).patchTool(id, methodData);
-          break;
-        case 'clients':
-          result = await (mastraClient as any).patchClient(id, methodData);
-          break;
-        case 'scorers':
-          // Scorers likely not supported in MastraClient yet, will fall through to fetch
-          result = null;
-          break;
-        default:
-          result = null;
-      }
+    //   // Handle each method explicitly to avoid TypeScript issues
+    //   let result;
+    //   switch (method) {
+    //     case 'agents':
+    //       result = await (mastraClient as any).patchAgent(id, methodData);
+    //       break;
+    //     case 'workflows':
+    //       result = await (mastraClient as any).patchWorkflow(id, methodData);
+    //       break;
+    //     case 'tools':
+    //       result = await (mastraClient as any).patchTool(id, methodData);
+    //       break;
+    //     case 'clients':
+    //       result = await (mastraClient as any).patchClient(id, methodData);
+    //       break;
+    //     case 'scorers':
+    //       // Scorers likely not supported in MastraClient yet, will fall through to fetch
+    //       result = null;
+    //       break;
+    //     default:
+    //       result = null;
+    //   }
       
-      if (result) {
-        return NextResponse.json(result);
-      }
-    } catch (error) {
-      console.log(`MastraClient patch method failed for ${method}/${id}, falling back to fetch:`, error);
-    }
+    //   if (result) {
+    //     return NextResponse.json(result);
+    //   }
+    // } catch (error) {
+    //   console.log(`MastraClient patch method failed for ${method}/${id}, falling back to fetch:`, error);
+    // }
     
     // Fallback to direct fetch
     const headers = await getAdminHeaders();
-    const response = await fetch(`${AGENT_SERVER_URL}/api/${method}/${id}`, {
+    const response = await fetch(`${AGENT_SERVER_URL}/admin/${method}/${id}`, {
       method: 'PATCH',
       headers,
       body: JSON.stringify(methodData),
@@ -203,42 +203,42 @@ export async function DELETE(
     const { method, id } = await params;
     
     // Try MastraClient first, with fallback to direct fetch
-    try {
-      const mastraClient = await getAdminMastraClient();
+    // try {
+    //   const mastraClient = await getAdminMastraClient();
       
-      // Handle each method explicitly to avoid TypeScript issues
-      let result;
-      switch (method) {
-        case 'agents':
-          result = await (mastraClient as any).deleteAgent(id);
-          break;
-        case 'workflows':
-          result = await (mastraClient as any).deleteWorkflow(id);
-          break;
-        case 'tools':
-          result = await (mastraClient as any).deleteTool(id);
-          break;
-        case 'clients':
-          result = await (mastraClient as any).deleteClient(id);
-          break;
-        case 'scorers':
-          // Scorers likely not supported in MastraClient yet, will fall through to fetch
-          result = null;
-          break;
-        default:
-          result = null;
-      }
+    //   // Handle each method explicitly to avoid TypeScript issues
+    //   let result;
+    //   switch (method) {
+    //     case 'agents':
+    //       result = await (mastraClient as any).deleteAgent(id);
+    //       break;
+    //     case 'workflows':
+    //       result = await (mastraClient as any).deleteWorkflow(id);
+    //       break;
+    //     case 'tools':
+    //       result = await (mastraClient as any).deleteTool(id);
+    //       break;
+    //     case 'clients':
+    //       result = await (mastraClient as any).deleteClient(id);
+    //       break;
+    //     case 'scorers':
+    //       // Scorers likely not supported in MastraClient yet, will fall through to fetch
+    //       result = null;
+    //       break;
+    //     default:
+    //       result = null;
+    //   }
       
-      if (result !== null) {
-        return NextResponse.json(result);
-      }
-    } catch (error) {
-      console.log(`MastraClient delete method failed for ${method}/${id}, falling back to fetch:`, error);
-    }
+    //   if (result !== null) {
+    //     return NextResponse.json(result);
+    //   }
+    // } catch (error) {
+    //   console.log(`MastraClient delete method failed for ${method}/${id}, falling back to fetch:`, error);
+    // }
     
     // Fallback to direct fetch
     const headers = await getAdminHeaders();
-    const response = await fetch(`${AGENT_SERVER_URL}/api/${method}/${id}`, {
+    const response = await fetch(`${AGENT_SERVER_URL}/admin/${method}/${id}`, {
       method: 'DELETE',
       headers,
     });
