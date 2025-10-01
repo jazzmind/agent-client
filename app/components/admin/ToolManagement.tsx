@@ -93,10 +93,9 @@ export default function ToolManagement() {
     try {
       await updateTool(selectedTool.id, {
         name: selectedTool.name,
-        displayName: selectedTool.display_name,
         description: selectedTool.description,
-        inputSchema: selectedTool.input_schema,
-        outputSchema: selectedTool.output_schema,
+        input_schema: selectedTool.input_schema,
+        output_schema: selectedTool.output_schema,
         scopes: selectedTool.scopes
       });
       setIsEditing(false);
