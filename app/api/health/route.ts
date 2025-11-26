@@ -28,7 +28,8 @@ export async function GET() {
     health.status = "degraded";
   } else {
     try {
-      const response = await fetch(`${agentServerUrl}/api/health`, {
+      // Agent server health endpoint is at /auth/health (not /api/health)
+      const response = await fetch(`${agentServerUrl}/auth/health`, {
         method: "GET",
         signal: AbortSignal.timeout(5000), // 5 second timeout
       });
