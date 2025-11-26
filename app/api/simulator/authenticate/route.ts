@@ -16,8 +16,9 @@ export async function POST(request: NextRequest) {
     const accessToken = await getAccessToken({
       clientId,
       clientSecret,
-      service: 'agent',  // Use agent service for full capabilities
-      scope: 'agent.read agent.execute workflow.execute tool.execute', // Request common scopes
+      service: 'agent',
+      audience: 'https://busibox.local/agent',
+      scope: 'agent.read agent.execute workflow.execute tool.execute',
     });
 
     // Decode token to get scopes (in a real implementation, you'd validate the JWT)
