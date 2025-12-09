@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import ClientManagement from '../components/admin/ClientManagement';
 import AgentManagement from '../components/admin/AgentManagement';
 import WorkflowManagement from '../components/admin/WorkflowManagement';
@@ -9,12 +9,34 @@ import RAGManagement from '../components/admin/RAGManagement';
 import ApplicationManagement from '../components/admin/ApplicationManagement';
 import ScorerManagement from '../components/admin/ScorerManagement';
 import Dashboard from '../components/admin/Dashboard';
+import { getAdminHeaders } from '@/lib/admin-auth';
 
 type Tab = 'dashboard' | 'applications' | 'agents' | 'workflows' | 'tools' | 'scorers' | 'rag';
 
 export default function AdminPage() {
   const [activeTab, setActiveTab] = useState<Tab>('dashboard');
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [clientId, setClientId] = useState<string | undefined>();
+  const [scopes, setScopes] = useState<string[]>([]);
+
+  useEffect(() => {
+    getAdminHeaders()
+      .then((headers: any) => {
+        const auth = headers?.Authorization || '';
+        if (auth.startsWith('Bearer ')) {
+          setClientId(process.env.ADMIN_CLIENT_ID || 'admin-client');
+          const rawScopes =
+            process.env.ADMIN_CLIENT_SCOPES ||
+            'admin.read admin.write client.read client.write rag.read rag.write';
+          setScopes(rawScopes.split(/\s+/).filter(Boolean));
+        }
+      })
+      .catch(() => {
+        setClientId(process.env.ADMIN_CLIENT_ID || 'admin-client');
+      });
+  }, []);
+
+  const scopeText = useMemo(() => (scopes.length ? scopes.join(', ') : 'admin client'), [scopes]);
 
   const tabs = [
     { 
@@ -208,16 +230,16 @@ export default function AdminPage() {
                 <span className="text-sm">🎭</span>
                 <span>Client Simulator</span>
               </a>
-              <button className="p-2 rounded-lg hover:bg-gray-100 transition-colors relative">
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-5 5v-5zM15 17H3a2 2 0 01-2-2V3a2 2 0 012-2h12a2 2 0 012 2v12a2 2 0 01-2 2z" />
-                </svg>
-                <div className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full flex items-center justify-center">
-                  <span className="text-xs text-white font-bold">3</span>
+              <div className="flex items-center gap-3 px-3 py-2 rounded-lg border border-gray-200 bg-gray-50">
+                <div className="w-8 h-8 bg-indigo-600 text-white rounded-full flex items-center justify-center font-semibold">
+                  {clientId ? clientId.charAt(0).toUpperCase() : 'A'}
                 </div>
-              </button>
-              <div className="w-8 h-8 bg-gray-600 rounded-full flex items-center justify-center">
-                <span className="text-white text-sm font-bold">A</span>
+                <div className="leading-tight">
+                  <div className="text-sm font-semibold text-gray-900 truncate max-w-[180px]">
+                    {clientId || 'Agent Client'}
+                  </div>
+                  <div className="text-xs text-gray-500 truncate max-w-[220px]">{scopeText}</div>
+                </div>
               </div>
             </div>
           </div>
