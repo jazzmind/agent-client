@@ -6,6 +6,7 @@ import { MastraClient } from "@mastra/client-js";
 
 // Token cache to avoid repeated requests (in-memory for this demo)
 let tokenCache: { token: string; expires: number } | null = null;
+let tokenClaimsCache: Record<string, any> | null = null;
 
 export async function getAdminHeaders() {
   const token = await getAdminAccessToken();
@@ -69,4 +70,43 @@ export async function getAdminMastraClient(): Promise<MastraClient> {
     });
   //}
   //return mastraClientCache;
+}
+
+function decodeJwt(token: string) {
+  try {
+    const payload = token.split('.')[1];
+    if (!payload) return null;
+    const normalized = payload.replace(/-/g, '+').replace(/_/g, '/');
+    const decoded = atob(normalized);
+    return JSON.parse(decoded);
+  } catch {
+    return null;
+  }
+}
+
+export async function getAdminIdentity() {
+  const token = await getAdminAccessToken();
+  if (tokenClaimsCache) {
+    return { ...tokenClaimsCache, token };
+  }
+
+  const claims = decodeJwt(token) || {};
+  const clientId = claims.client_id || claims.sub || ADMIN_CLIENT_ID || 'admin-client';
+  const scopes: string[] = typeof claims.scope === 'string'
+    ? claims.scope.split(/\s+/).filter(Boolean)
+    : Array.isArray(claims.scope)
+      ? claims.scope
+      : (process.env.ADMIN_CLIENT_SCOPES || 'admin.read admin.write client.read client.write rag.read rag.write')
+          .split(/\s+/)
+          .filter(Boolean);
+
+  tokenClaimsCache = {
+    clientId,
+    scopes,
+    expiresAt: claims.exp ? claims.exp * 1000 : undefined,
+    issuer: claims.iss,
+    subject: claims.sub,
+  };
+
+  return { ...tokenClaimsCache, token };
 }

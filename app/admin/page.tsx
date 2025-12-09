@@ -138,7 +138,7 @@ export default function AdminPage() {
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Sidebar */}
-      <div className={`fixed inset-y-0 left-0 z-50 w-64 bg-white/80 backdrop-blur-xl border-r border-gray-200/50 shadow-xl transition-transform duration-300 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+      <div className={`fixed left-0 z-40 w-64 bg-white/90 backdrop-blur-xl border-r border-gray-200/50 shadow-xl transition-transform duration-300 top-14 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
         {/* Logo & Brand */}
         <div className="flex items-center justify-between h-16 px-6 border-b border-gray-200/50">
           <div className="flex items-center space-x-3">
@@ -201,13 +201,14 @@ export default function AdminPage() {
 
       {/* Main Content */}
       <div className={`transition-all duration-300 ${sidebarOpen ? 'lg:ml-64' : 'ml-0'}`}>
-        {/* Top Header */}
-        <header className="bg-white/80 backdrop-blur-xl border-b border-gray-200/50 shadow-sm sticky top-0 z-40">
-          <div className="flex items-center justify-between h-16 px-6">
+        {/* Page toolbar */}
+        <div className="bg-white/80 backdrop-blur border-b border-gray-200/60 shadow-sm sticky top-14 z-30">
+          <div className="flex items-center justify-between h-14 px-6">
             <div className="flex items-center space-x-4">
               <button
                 onClick={() => setSidebarOpen(!sidebarOpen)}
                 className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
+                aria-label="Toggle sidebar"
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
@@ -221,8 +222,7 @@ export default function AdminPage() {
                 <p className="text-sm text-gray-500">{activeTabData?.description}</p>
               </div>
             </div>
-            
-              <div className="flex items-center space-x-4">
+            <div className="flex items-center space-x-4">
               <a
                 href="/simulator"
                 className="bg-indigo-600 text-white px-3 py-2 rounded-lg font-medium hover:bg-indigo-700 transition-colors text-sm flex items-center space-x-2"
@@ -243,10 +243,10 @@ export default function AdminPage() {
               </div>
             </div>
           </div>
-        </header>
+        </div>
 
         {/* Tab Content with Animation */}
-        <main className="p-6">
+        <main className="p-6 pt-4">
           <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
             {renderActiveTab()}
           </div>
@@ -256,7 +256,7 @@ export default function AdminPage() {
       {/* Mobile overlay */}
       {sidebarOpen && (
         <div 
-          className="fixed inset-0 bg-gray-600 bg-opacity-75 z-40 lg:hidden"
+          className="fixed inset-0 bg-gray-600 bg-opacity-75 z-30 lg:hidden top-14"
           onClick={() => setSidebarOpen(false)}
         />
       )}

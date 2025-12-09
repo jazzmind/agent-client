@@ -1,36 +1,87 @@
 'use client';
 
 import Link from 'next/link';
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { LayoutGrid, Moon, Sun } from 'lucide-react';
+import { getAdminIdentity } from '@/lib/admin-auth';
 
 interface HeaderProps {
-  clientId?: string;
-  scopes?: string[];
   basePath?: string;
   mastraUrl?: string;
+  portalUrl?: string;
 }
 
-export function Header({ clientId, scopes = [], basePath = '', mastraUrl }: HeaderProps) {
-  const initials = useMemo(() => (clientId ? clientId.charAt(0).toUpperCase() : 'A'), [clientId]);
+type Identity = {
+  clientId?: string;
+  scopes?: string[];
+  expiresAt?: number;
+  issuer?: string;
+  subject?: string;
+};
+
+export function Header({ basePath = '', mastraUrl, portalUrl = '/' }: HeaderProps) {
+  const [identity, setIdentity] = useState<Identity>({});
+  const [loadingIdentity, setLoadingIdentity] = useState(false);
+  const [theme, setTheme] = useState<'light' | 'dark'>('light');
+  const scopes = identity.scopes || [];
+  const displayName = identity.subject || identity.clientId || 'Admin Client';
+  const initials = useMemo(() => (displayName ? displayName.charAt(0).toUpperCase() : 'A'), [displayName]);
   const scopeText = scopes.length > 0 ? scopes.join(', ') : 'admin client';
 
   const link = (path: string) => `${basePath}${path}`;
 
+  useEffect(() => {
+    const current = (typeof document !== 'undefined' && document.documentElement.dataset.theme) as 'light' | 'dark' | undefined;
+    if (current) setTheme(current);
+  }, []);
+
+  useEffect(() => {
+    const loadIdentity = async () => {
+      setLoadingIdentity(true);
+      try {
+        const info = await getAdminIdentity();
+        setIdentity({
+          clientId: info.clientId,
+          scopes: info.scopes,
+          expiresAt: info.expiresAt,
+          issuer: info.issuer,
+          subject: info.subject,
+        });
+      } catch (error) {
+        console.error('Failed to load admin identity', error);
+      } finally {
+        setLoadingIdentity(false);
+      }
+    };
+    loadIdentity();
+  }, []);
+
+  const toggleTheme = () => {
+    const next = theme === 'dark' ? 'light' : 'dark';
+    setTheme(next);
+    if (typeof document !== 'undefined') {
+      document.documentElement.dataset.theme = next;
+    }
+  };
+
   return (
-    <header className="sticky top-0 z-40 bg-white/90 backdrop-blur shadow-sm border-b border-gray-200">
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 h-14 flex items-center justify-between">
+    <header className="sticky top-0 z-50 shadow-lg bg-gradient-to-r from-slate-900 via-indigo-900 to-slate-900 text-white border-b border-slate-800">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-14 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <Link href={link('/admin')} className="flex items-center gap-2">
-            <div className="w-9 h-9 rounded-full bg-gradient-to-br from-indigo-500 to-blue-600 flex items-center justify-center text-white font-semibold">
+          <Link href={portalUrl} className="p-2 rounded-lg hover:bg-white/10 transition-colors" title="Back to portal">
+            <LayoutGrid className="w-5 h-5 text-white" />
+          </Link>
+          <Link href={link('/admin')} className="flex items-center gap-2 group">
+            <div className="w-9 h-9 rounded-full bg-white text-slate-900 flex items-center justify-center font-semibold shadow-sm transition-transform group-hover:scale-105">
               AC
             </div>
             <div className="leading-tight">
-              <div className="text-sm font-semibold text-gray-900">Agent Client</div>
-              <div className="text-[11px] text-gray-500">Admin & Simulator</div>
+              <div className="text-sm font-semibold text-white">Agent Client</div>
+              <div className="text-[11px] text-white/70">Admin & Simulator</div>
             </div>
           </Link>
           {mastraUrl && (
-            <span className="text-[11px] text-gray-600 px-2 py-1 rounded-full bg-gray-100 border border-gray-200">
+            <span className="text-[11px] text-white/80 px-2 py-1 rounded-full bg-white/10 border border-white/10">
               Connected: {mastraUrl}
             </span>
           )}
@@ -39,23 +90,33 @@ export function Header({ clientId, scopes = [], basePath = '', mastraUrl }: Head
         <div className="flex items-center gap-3">
           <Link
             href={link('/admin')}
-            className="text-sm text-gray-700 hover:text-indigo-600 font-medium px-2 py-1"
+            className="text-sm text-white hover:text-indigo-100 font-medium px-2 py-1 transition-colors"
           >
             Admin
           </Link>
           <Link
             href={link('/simulator')}
-            className="text-sm text-gray-700 hover:text-indigo-600 font-medium px-2 py-1"
+            className="text-sm text-white hover:text-indigo-100 font-medium px-2 py-1 transition-colors"
           >
             Simulator
           </Link>
-          <div className="flex items-center gap-2 pl-3 border-l border-gray-200">
-            <div className="w-9 h-9 rounded-full bg-gray-900 text-white flex items-center justify-center text-sm font-semibold">
+          <button
+            onClick={toggleTheme}
+            className="p-2 rounded-lg hover:bg-white/10 transition-colors border border-white/10"
+            title="Toggle theme"
+            type="button"
+          >
+            {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+          </button>
+          <div className="flex items-center gap-2 pl-3 border-l border-white/20">
+            <div className="w-9 h-9 rounded-full bg-indigo-500 text-white flex items-center justify-center text-sm font-semibold shadow">
               {initials}
             </div>
-            <div className="hidden sm:block leading-tight">
-              <div className="text-sm font-medium text-gray-900">{clientId || 'Admin Client'}</div>
-              <div className="text-[11px] text-gray-500 truncate max-w-[180px]">{scopeText}</div>
+            <div className="leading-tight hidden sm:block">
+              <div className="text-sm font-semibold text-white truncate max-w-[200px]">
+                {loadingIdentity ? 'Loading...' : displayName}
+              </div>
+              <div className="text-[11px] text-white/70 truncate max-w-[220px]">{scopeText}</div>
             </div>
           </div>
         </div>
