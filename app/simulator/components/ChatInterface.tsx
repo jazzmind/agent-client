@@ -47,7 +47,13 @@ interface ChatInterfaceProps {
 }
 
 // Document-aware agents that show RAG-specific UI
-const DOCUMENT_AGENTS = ['documentAgent', 'ragChatAgent', 'rfp-analysis-agent', 'rfp-analyzer-agent'];
+const DOCUMENT_AGENTS = [
+  'documentAgent',
+  'ragChatAgent',
+  'rfp-analysis-agent',
+  'rfp-analyzer-agent',
+  'rag-search-agent',
+];
 
 // Citations display component
 function CitationsDisplay({ citations }: { citations: string[] }) {
