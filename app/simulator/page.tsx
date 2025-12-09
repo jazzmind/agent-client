@@ -39,7 +39,7 @@ export default function ClientSimulator() {
 
     try {
       // Test authentication by trying to get a token
-      const response = await fetch('/api/simulator/authenticate', {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_BASE_PATH || ''}/api/simulator/authenticate`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -57,7 +57,7 @@ export default function ClientSimulator() {
       }
 
       // Fetch available agents for this client
-      const agentsResponse = await fetch('/api/simulator/agents', {
+      const agentsResponse = await fetch(`${process.env.NEXT_PUBLIC_BASE_PATH || ''}/api/simulator/agents`, {
         headers: {
           'Authorization': `Bearer ${data.accessToken}`,
         },

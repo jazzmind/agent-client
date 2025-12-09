@@ -171,7 +171,7 @@ export default function ChatInterface({ session, agents, onBackToAgents }: ChatI
     const startTime = Date.now();
 
     try {
-      const response = await fetch('/api/simulator/chat', {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_BASE_PATH || ''}/api/simulator/chat`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

@@ -1,5 +1,10 @@
 
 
+import { apiFetch } from './fetch-wrapper';
+
+// Shadow fetch so all relative calls include basePath
+const fetch = apiFetch;
+
 /**
  * Admin API client that calls local API routes (which handle server-side auth)
  */
