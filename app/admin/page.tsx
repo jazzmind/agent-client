@@ -224,6 +224,13 @@ export default function AdminPage() {
             </div>
             <div className="flex items-center space-x-4">
               <a
+                href="/weather"
+                className="bg-blue-600 text-white px-3 py-2 rounded-lg font-medium hover:bg-blue-700 transition-colors text-sm flex items-center space-x-2"
+              >
+                <span className="text-sm">🌤️</span>
+                <span>Weather Demo</span>
+              </a>
+              <a
                 href="/simulator"
                 className="bg-indigo-600 text-white px-3 py-2 rounded-lg font-medium hover:bg-indigo-700 transition-colors text-sm flex items-center space-x-2"
               >
