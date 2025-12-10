@@ -6,7 +6,16 @@ import { MastraClient } from "@mastra/client-js";
 
 // Token cache to avoid repeated requests (in-memory for this demo)
 let tokenCache: { token: string; expires: number } | null = null;
-let tokenClaimsCache: Record<string, any> | null = null;
+
+type TokenClaims = {
+  clientId: string;
+  scopes: string[];
+  expiresAt?: number;
+  issuer?: string;
+  subject?: string;
+};
+
+let tokenClaimsCache: TokenClaims | null = null;
 
 export async function getAdminHeaders() {
   const token = await getAdminAccessToken();
@@ -84,7 +93,7 @@ function decodeJwt(token: string) {
   }
 }
 
-export async function getAdminIdentity() {
+export async function getAdminIdentity(): Promise<TokenClaims & { token: string }> {
   const token = await getAdminAccessToken();
   if (tokenClaimsCache) {
     return { ...tokenClaimsCache, token };
