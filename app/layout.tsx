@@ -4,6 +4,7 @@ import "./globals.css";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
 import { VersionBar } from "@/components/layout/VersionBar";
+import { FetchWrapper } from '@/components/FetchWrapper'
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -32,6 +33,7 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased bg-gray-50`}
       >
+        <FetchWrapper />
         <Header basePath={basePath} mastraUrl={mastraUrl} />
         <main className="min-h-screen">{children}</main>
         <Footer />

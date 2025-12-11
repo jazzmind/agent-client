@@ -9,12 +9,12 @@
  * - Health checks
  */
 
-import { apiFetch } from './fetch-wrapper';
+//import { apiFetch } from './fetch-wrapper';
 
 const AGENT_API_URL = process.env.NEXT_PUBLIC_AGENT_API_URL || 'http://10.96.201.202:4111';
 
 // Shadow fetch so all relative calls include basePath
-const fetch = apiFetch;
+//const fetch = apiFetch;
 
 /**
  * Helper function to handle API responses
