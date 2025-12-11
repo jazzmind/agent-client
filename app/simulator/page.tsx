@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Link from 'next/link';
 import ClientAuth from './components/ClientAuth';
 import AgentSelector from './components/AgentSelector';
 import ChatInterface from './components/ChatInterface';
@@ -119,12 +120,12 @@ export default function ClientSimulator() {
               {session.isAuthenticated && (
                 <SessionInfo session={session} onDisconnect={handleDisconnect} />
               )}
-              <a
+              <Link
                 href="/admin"
                 className="bg-gray-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-gray-700 transition-colors"
               >
                 Admin Panel
-              </a>
+              </Link>
             </div>
           </div>
         </div>

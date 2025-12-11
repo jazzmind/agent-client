@@ -10,6 +10,8 @@ import ApplicationManagement from '../../components/admin/ApplicationManagement'
 import ScorerManagement from '../../components/admin/ScorerManagement';
 import Dashboard from '../../components/admin/Dashboard';
 import { getAdminHeaders } from '@/lib/admin-auth';
+import { withBasePath } from '@/lib/base-path';
+import Link from 'next/link';
 
 type Tab = 'dashboard' | 'applications' | 'agents' | 'workflows' | 'tools' | 'scorers' | 'rag';
 
@@ -223,20 +225,20 @@ export default function AdminPage() {
               </div>
             </div>
             <div className="flex items-center space-x-4">
-              <a
+              <Link
                 href="/weather"
                 className="bg-blue-600 text-white px-3 py-2 rounded-lg font-medium hover:bg-blue-700 transition-colors text-sm flex items-center space-x-2"
               >
                 <span className="text-sm">🌤️</span>
                 <span>Weather Demo</span>
-              </a>
-              <a
+              </Link>
+              <Link
                 href="/simulator"
                 className="bg-indigo-600 text-white px-3 py-2 rounded-lg font-medium hover:bg-indigo-700 transition-colors text-sm flex items-center space-x-2"
               >
                 <span className="text-sm">🎭</span>
                 <span>Client Simulator</span>
-              </a>
+              </Link>
               <div className="flex items-center gap-3 px-3 py-2 rounded-lg border border-gray-200 bg-gray-50">
                 <div className="w-8 h-8 bg-indigo-600 text-white rounded-full flex items-center justify-center font-semibold">
                   {clientId ? clientId.charAt(0).toUpperCase() : 'A'}
