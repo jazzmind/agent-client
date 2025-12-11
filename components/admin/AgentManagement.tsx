@@ -11,7 +11,7 @@ import {
   getAvailableScorers,
   getAvailableAgents,
   getAvailableProcessors
-} from '../../../lib/admin-client';
+} from '../../lib/admin-client';
 
 interface Agent {
   id: string;

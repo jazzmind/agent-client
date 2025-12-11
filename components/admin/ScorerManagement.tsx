@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { listScorers, deleteScorer, createScorer } from '../../../lib/admin-client';
+import { listScorers, deleteScorer, createScorer } from '../../lib/admin-client';
 
 interface Scorer {
   id: string;

@@ -1,14 +1,14 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import ClientManagement from '../components/admin/ClientManagement';
-import AgentManagement from '../components/admin/AgentManagement';
-import WorkflowManagement from '../components/admin/WorkflowManagement';
-import ToolManagement from '../components/admin/ToolManagement';
-import RAGManagement from '../components/admin/RAGManagement';
-import ApplicationManagement from '../components/admin/ApplicationManagement';
-import ScorerManagement from '../components/admin/ScorerManagement';
-import Dashboard from '../components/admin/Dashboard';
+import ClientManagement from '../../components/admin/ClientManagement';
+import AgentManagement from '../../components/admin/AgentManagement';
+import WorkflowManagement from '../../components/admin/WorkflowManagement';
+import ToolManagement from '../../components/admin/ToolManagement';
+import RAGManagement from '../../components/admin/RAGManagement';
+import ApplicationManagement from '../../components/admin/ApplicationManagement';
+import ScorerManagement from '../../components/admin/ScorerManagement';
+import Dashboard from '../../components/admin/Dashboard';
 import { getAdminHeaders } from '@/lib/admin-auth';
 
 type Tab = 'dashboard' | 'applications' | 'agents' | 'workflows' | 'tools' | 'scorers' | 'rag';

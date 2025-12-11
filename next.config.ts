@@ -11,9 +11,11 @@ const nextConfig: NextConfig = {
   },
   // Exclude story files from being processed by Next.js
   pageExtensions: ['tsx', 'ts', 'jsx', 'js'].filter(ext => !ext.includes('stories')),
-  // Add basePath and assetPrefix for path-based deployment (subdir routing)
-  basePath: process.env.NEXT_PUBLIC_BASE_PATH || '/agent-client',
-  assetPrefix: process.env.NEXT_PUBLIC_BASE_PATH || '/agent-client',
+  // Use basePath when deployed to Busibox at /agents
+  // For subdomain deployment (agents.domain.com), NEXT_PUBLIC_BASE_PATH should not be set
+  basePath: process.env.NEXT_PUBLIC_BASE_PATH || '',
+  // Asset prefix for proper asset loading
+  assetPrefix: process.env.NEXT_PUBLIC_BASE_PATH || '',
 };
 
 export default nextConfig;

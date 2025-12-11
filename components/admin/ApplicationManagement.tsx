@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { listClients, registerClient, deleteClient, updateClientScopes, getClientSecret, resetClientSecret } from '../../../lib/admin-client';
+import { listClients, registerClient, deleteClient, updateClientScopes, getClientSecret, resetClientSecret } from '../../lib/admin-client';
 
 interface Application {
   id: string;

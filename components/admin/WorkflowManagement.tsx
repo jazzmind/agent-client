@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { listWorkflows, deleteWorkflow } from '../../../lib/admin-client';
+import { listWorkflows, deleteWorkflow } from '../../lib/admin-client';
 
 interface WorkflowStep {
   id: string;
