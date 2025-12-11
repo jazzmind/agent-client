@@ -18,18 +18,18 @@ export async function GET() {
     },
   };
 
-  // Check agent server connectivity
-  const agentServerUrl = process.env.MASTRA_API_URL;
+  // Check Python agent server connectivity
+  const agentServerUrl = process.env.NEXT_PUBLIC_AGENT_API_URL;
   if (!agentServerUrl) {
     health.checks.agent_server = {
       status: "not_configured",
-      message: "MASTRA_API_URL not set",
+      message: "NEXT_PUBLIC_AGENT_API_URL not set",
     };
     health.status = "degraded";
   } else {
     try {
-      // Agent server health endpoint is at /auth/health (not /api/health)
-      const response = await fetch(`${agentServerUrl}/auth/health`, {
+      // Python agent server health endpoint is at /health
+      const response = await fetch(`${agentServerUrl}/health`, {
         method: "GET",
         signal: AbortSignal.timeout(5000), // 5 second timeout
       });
