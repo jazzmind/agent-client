@@ -337,3 +337,4 @@ Allow users to:
 - **Agent Client**: `/Users/wessonnenreich/Code/sonnenreich/agent-client/`
 - **Busibox Deployment**: `/Users/wessonnenreich/Code/sonnenreich/busibox/provision/ansible/`
 - **Model Registry**: `/Users/wessonnenreich/Code/sonnenreich/busibox/provision/ansible/group_vars/all/model_registry.yml`
+
