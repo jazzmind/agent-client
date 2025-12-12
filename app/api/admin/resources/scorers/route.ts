@@ -1,28 +1,39 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getAdminHeaders } from '@/lib/admin-auth';
+import * as agentClient from '@/lib/agent-api-client';
 
-const baseUrl = process.env.MASTRA_API_URL || 'https://agent-sundai.vercel.app';
+function getTokenFromRequest(request: NextRequest): string | undefined {
+  const authHeader = request.headers.get('authorization');
+  if (authHeader?.startsWith('Bearer ')) {
+    return authHeader.substring(7);
+  }
+  const tokenCookie = request.cookies.get('auth_token');
+  return tokenCookie?.value;
+}
 
 export async function GET(request: NextRequest) {
   try {
-    const authHeaders = await getAdminHeaders();
-    
-    const response = await fetch(`${baseUrl}/api/resources/scorers`, {
-      method: 'GET',
-      headers: authHeaders,
-    });
-
-    if (!response.ok) {
-      const errorData = await response.text();
-      throw new Error(`Failed to fetch scorers: ${response.status} ${errorData}`);
-    }
-
-    const data = await response.json();
-    return NextResponse.json(data);
+    const token = getTokenFromRequest(request);
+    const evals = await agentClient.listEvals(token);
+    return NextResponse.json(evals);
   } catch (error: any) {
-    console.error('Failed to fetch scorers:', error);
+    console.error('Failed to fetch evaluations:', error);
     return NextResponse.json(
-      { error: error.message || 'Failed to fetch scorers' },
+      { error: error.message || 'Failed to fetch evaluations' },
+      { status: 500 }
+    );
+  }
+}
+
+export async function POST(request: NextRequest) {
+  try {
+    const token = getTokenFromRequest(request);
+    const body = await request.json();
+    const eval_def = await agentClient.createEval(body, token);
+    return NextResponse.json(eval_def, { status: 201 });
+  } catch (error: any) {
+    console.error('Failed to create evaluation:', error);
+    return NextResponse.json(
+      { error: error.message || 'Failed to create evaluation' },
       { status: 500 }
     );
   }
