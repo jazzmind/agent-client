@@ -1,136 +1,150 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { MastraClient } from "@mastra/client-js";
-import { getAgentWithDocsHeaders, getAuthHeaders } from '../../../lib/oauth-client.js';
-
-// Server-side Mastra client
-const baseUrl = process.env.MASTRA_API_URL || 'https://agent-sundai.vercel.app';
-
-// Document-aware agents that need special handling
-const DOCUMENT_AGENTS = ['documentAgent', 'ragChatAgent', 'rfp-analysis-agent', 'rfp-analyzer-agent'];
-
-console.log('Mastra API URL:', baseUrl);
+import * as agentClient from '@/lib/agent-api-client';
+import { getTokenFromRequest } from '@/lib/auth-helper';
 
 /**
- * Format RAG response with citations
+ * POST /api/chat
+ * Send a chat message and get response from dispatcher agent
+ * 
+ * This route:
+ * 1. Receives user message and attachments
+ * 2. Loads user's chat settings (enabled tools/agents)
+ * 3. Calls dispatcher agent with settings
+ * 4. Returns both user message and assistant response
  */
-function formatRAGResponse(text: string, sources: any[] = []): { formattedText: string; citations: string[] } {
-  const citations: string[] = [];
-  
-  // Extract citations from the text
-  const citationRegex = /\[Source:\s*([^\]]+)\]/g;
-  let match;
-  while ((match = citationRegex.exec(text)) !== null) {
-    const citation = match[1].trim();
-    if (!citations.includes(citation)) {
-      citations.push(citation);
-    }
-  }
-  
-  // Add sources from response data
-  if (sources && sources.length > 0) {
-    sources.forEach(source => {
-      const citation = source.pageNumber 
-        ? `${source.filename}, Page ${source.pageNumber}` 
-        : source.filename;
-      if (citation && !citations.includes(citation)) {
-        citations.push(citation);
-      }
-    });
-  }
-  
-  return {
-    formattedText: text,
-    citations
-  };
-}
-
 export async function POST(request: NextRequest) {
   try {
-    const { messages, agentId = 'weatherAgent', context } = await request.json();
-
-    if (!messages || !Array.isArray(messages)) {
+    const token = getTokenFromRequest(request);
+    if (!token) {
       return NextResponse.json(
-        { error: 'Messages array is required' },
-        { status: 400 }
-      );
-    }
-
-    // Check if this is a document-aware agent
-    const isDocumentAgent = DOCUMENT_AGENTS.includes(agentId);
-
-    // Get authenticated headers using OAuth 2.0 client credentials
-    // Use document scopes for document agents
-    const authHeaders = isDocumentAgent 
-      ? await getAgentWithDocsHeaders()
-      : await getAuthHeaders();
-    
-    console.log(`Using OAuth 2.0 authentication for agent: ${agentId} (document: ${isDocumentAgent})`);
-
-    // Create authenticated Mastra client
-    const mastraClient = new MastraClient({
-      baseUrl,
-      headers: authHeaders
-    });
-
-    // Get the specified agent from the Mastra server
-    const agent = mastraClient.getAgent(agentId);
-    
-    // Build generate options
-    const generateOptions: any = {};
-    if (context) {
-      generateOptions.context = context;
-    }
-    
-    // Generate response from the agent
-    let response;
-    if (Object.keys(generateOptions).length > 0) {
-      response = await agent.generateVNext(messages, generateOptions);
-    } else {
-      response = await agent.generateVNext(messages);
-    }
-
-    // Process RAG response if from document agent
-    let formattedText = response.text || 'Sorry, I couldn\'t process that request.';
-    let citations: string[] = [];
-    
-    if (isDocumentAgent && response.text) {
-      const formatted = formatRAGResponse(response.text, response.sources);
-      formattedText = formatted.formattedText;
-      citations = formatted.citations;
-    }
-
-    return NextResponse.json({
-      text: formattedText,
-      success: true,
-      agentId,
-      ...(isDocumentAgent && {
-        isRAGResponse: true,
-        citations,
-        sourcesFound: citations.length > 0,
-      }),
-    });
-
-  } catch (error: any) {
-    console.error(`Error communicating with agent:`, error);
-    
-    // Check if it's an authentication error
-    if (error.message.includes('401') || error.message.includes('403') || error.message.includes('invalid_client')) {
-      return NextResponse.json(
-        { 
-          error: 'Authentication failed. Please check client credentials.',
-          success: false
-        },
+        { error: 'Authentication required' },
         { status: 401 }
       );
     }
-    
-    return NextResponse.json(
-      { 
-        error: 'Failed to communicate with agent service',
-        success: false,
-        details: error.message
+
+    const userId = getUserIdFromToken(token);
+    if (!userId) {
+      return NextResponse.json(
+        { error: 'Invalid token' },
+        { status: 401 }
+      );
+    }
+
+    const body = await request.json();
+    const { conversation_id, message, attachments = [] } = body;
+
+    // Load user's chat settings
+    const settingsResponse = await fetch(`${request.nextUrl.origin}/api/chat/settings`, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
       },
-      { status: 500 }
+    });
+
+    let settings = {
+      enabled_tools: [],
+      enabled_agents: [],
+      model: undefined,
+      temperature: 0.7,
+      max_tokens: 2000,
+    };
+
+    if (settingsResponse.ok) {
+      settings = await settingsResponse.json();
+    }
+
+    // Get or create conversation
+    let conversation;
+    if (conversation_id) {
+      conversation = await db.conversation.findUnique({
+        where: { id: conversation_id },
+      });
+      if (!conversation || conversation.userId !== userId) {
+        return NextResponse.json(
+          { error: 'Conversation not found' },
+          { status: 404 }
+        );
+      }
+    } else {
+      // Create new conversation
+      conversation = await db.conversation.create({
+        data: {
+          title: message.substring(0, 50),
+          userId,
+        },
+      });
+    }
+
+    // Save user message to database
+    const userMessage = await db.message.create({
+      data: {
+        conversationId: conversation.id,
+        role: 'user',
+        content: message,
+        attachments: attachments.length > 0 ? attachments : null,
+      },
+    });
+
+    // Call dispatcher agent
+    // Note: This assumes dispatcher agent is implemented in agent-server (REQ-001)
+    const run = await agentClient.createRun({
+      agent_id: 'dispatcher', // Dispatcher agent ID
+      input: {
+        query: message,
+        attachments,
+        enabled_tools: settings.enabled_tools,
+        enabled_agents: settings.enabled_agents,
+        user_settings: settings,
+      },
+    }, token);
+
+    // Create placeholder assistant message
+    // This will be updated via SSE streaming
+    const assistantMessage = await db.message.create({
+      data: {
+        conversationId: conversation.id,
+        role: 'assistant',
+        content: '', // Will be updated via streaming
+        runId: run.id,
+      },
+    });
+
+    // Update conversation updated_at
+    await db.conversation.update({
+      where: { id: conversation.id },
+      data: { updatedAt: new Date() },
+    });
+
+    // Return immediately with run ID for SSE streaming
+    return NextResponse.json({
+      userMessage: {
+        id: userMessage.id,
+        conversation_id: conversation.id,
+        role: userMessage.role,
+        content: userMessage.content,
+        attachments: userMessage.attachments,
+        created_at: userMessage.createdAt.toISOString(),
+      },
+      assistantMessage: {
+        id: assistantMessage.id,
+        conversation_id: conversation.id,
+        role: assistantMessage.role,
+        content: assistantMessage.content,
+        run_id: run.id,
+        created_at: assistantMessage.createdAt.toISOString(),
+      },
+      conversation: {
+        id: conversation.id,
+        title: conversation.title,
+        created_at: conversation.createdAt.toISOString(),
+        updated_at: conversation.updatedAt.toISOString(),
+      },
+      runId: run.id, // Client should use this to stream updates
+    });
+  } catch (error: any) {
+    console.error('[API] Chat error:', error);
+    return NextResponse.json(
+      { error: error.message || 'Failed to process chat message' },
+      { status: error.statusCode || 500 }
     );
   }
 }
