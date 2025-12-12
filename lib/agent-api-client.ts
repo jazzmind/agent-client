@@ -366,6 +366,164 @@ export async function getScoreAggregates(filters?: {
 }
 
 // ==========================================================================
+// CONVERSATIONS
+// ==========================================================================
+
+export interface Conversation {
+  id: string;
+  title: string;
+  user_id: string;
+  message_count?: number;
+  last_message?: {
+    role: string;
+    content: string;
+    created_at: string;
+  };
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Message {
+  id: string;
+  conversation_id: string;
+  role: 'user' | 'assistant' | 'system';
+  content: string;
+  attachments?: any[];
+  run_id?: string;
+  routing_decision?: any;
+  tool_calls?: any[];
+  created_at: string;
+}
+
+export async function listConversations(token?: string) {
+  const response = await fetch(`${AGENT_API_URL}/conversations`, {
+    headers: getAgentApiHeaders(token),
+  });
+  return handleResponse(response) as Promise<Conversation[]>;
+}
+
+export async function getConversation(id: string, token?: string) {
+  const response = await fetch(`${AGENT_API_URL}/conversations/${id}`, {
+    headers: getAgentApiHeaders(token),
+  });
+  return handleResponse(response) as Promise<Conversation & { messages?: Message[] }>;
+}
+
+export async function createConversation(data: { title?: string }, token?: string) {
+  const response = await fetch(`${AGENT_API_URL}/conversations`, {
+    method: 'POST',
+    headers: getAgentApiHeaders(token),
+    body: JSON.stringify(data),
+  });
+  return handleResponse(response) as Promise<Conversation>;
+}
+
+export async function updateConversation(id: string, data: { title?: string }, token?: string) {
+  const response = await fetch(`${AGENT_API_URL}/conversations/${id}`, {
+    method: 'PATCH',
+    headers: getAgentApiHeaders(token),
+    body: JSON.stringify(data),
+  });
+  return handleResponse(response) as Promise<Conversation>;
+}
+
+export async function deleteConversation(id: string, token?: string) {
+  const response = await fetch(`${AGENT_API_URL}/conversations/${id}`, {
+    method: 'DELETE',
+    headers: getAgentApiHeaders(token),
+  });
+  if (response.status === 204) {
+    return { success: true };
+  }
+  return handleResponse(response);
+}
+
+// ==========================================================================
+// MESSAGES
+// ==========================================================================
+
+export async function createMessage(
+  conversationId: string,
+  data: {
+    role: 'user' | 'assistant' | 'system';
+    content: string;
+    attachments?: any[];
+    run_id?: string;
+    routing_decision?: any;
+    tool_calls?: any[];
+  },
+  token?: string
+) {
+  const response = await fetch(
+    `${AGENT_API_URL}/conversations/${conversationId}/messages`,
+    {
+      method: 'POST',
+      headers: getAgentApiHeaders(token),
+      body: JSON.stringify(data),
+    }
+  );
+  return handleResponse(response) as Promise<Message>;
+}
+
+export async function listMessages(conversationId: string, token?: string) {
+  const response = await fetch(
+    `${AGENT_API_URL}/conversations/${conversationId}/messages`,
+    {
+      headers: getAgentApiHeaders(token),
+    }
+  );
+  return handleResponse(response) as Promise<Message[]>;
+}
+
+export async function getMessage(id: string, token?: string) {
+  const response = await fetch(`${AGENT_API_URL}/messages/${id}`, {
+    headers: getAgentApiHeaders(token),
+  });
+  return handleResponse(response) as Promise<Message>;
+}
+
+// ==========================================================================
+// CHAT SETTINGS
+// ==========================================================================
+
+export interface ChatSettings {
+  id: string;
+  user_id: string;
+  enabled_tools: string[];
+  enabled_agents: string[];
+  model?: string;
+  temperature: number;
+  max_tokens: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export async function getChatSettings(token?: string) {
+  const response = await fetch(`${AGENT_API_URL}/users/me/chat-settings`, {
+    headers: getAgentApiHeaders(token),
+  });
+  return handleResponse(response) as Promise<ChatSettings>;
+}
+
+export async function updateChatSettings(
+  data: {
+    enabled_tools?: string[];
+    enabled_agents?: string[];
+    model?: string;
+    temperature?: number;
+    max_tokens?: number;
+  },
+  token?: string
+) {
+  const response = await fetch(`${AGENT_API_URL}/users/me/chat-settings`, {
+    method: 'PUT',
+    headers: getAgentApiHeaders(token),
+    body: JSON.stringify(data),
+  });
+  return handleResponse(response) as Promise<ChatSettings>;
+}
+
+// ==========================================================================
 // DISPATCHER
 // ==========================================================================
 
