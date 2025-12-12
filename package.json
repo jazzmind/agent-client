@@ -14,7 +14,6 @@
     "build-storybook": "storybook build"
   },
   "dependencies": {
-    "@prisma/client": "^5.22.0",
     "jose": "^6.1.2",
     "lucide-react": "^0.469.0",
     "next": "15.5.3",
@@ -43,7 +42,6 @@
     "eslint": "^8",
     "eslint-plugin-storybook": "^0.11.0",
     "jsdom": "^25.0.1",
-    "prisma": "^5.22.0",
     "storybook": "^8.4.7",
     "tailwindcss": "^4",
     "typescript": "^5",
