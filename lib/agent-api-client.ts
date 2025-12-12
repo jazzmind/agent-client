@@ -13,7 +13,7 @@
  * Based on OpenAPI spec: specs/001-agent-management-rebuild/contracts/agent-server-api.yaml
  */
 
-const AGENT_API_URL = process.env.NEXT_PUBLIC_AGENT_API_URL || 'http://10.96.200.31:8000';
+const AGENT_API_URL = process.env.NEXT_PUBLIC_AGENT_API_URL || 'http://10.96.200.202:8000';
 
 // ==========================================================================
 // TYPES
