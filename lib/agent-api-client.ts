@@ -1,36 +1,109 @@
 /**
- * Client for the Python Agent Server API
+ * Comprehensive Client for the Python Agent Server API
  * 
- * This client handles communication with the new Python-based agent server
- * running on agent-lxc (port 4111). It includes:
- * - OAuth 2.0 authentication with token propagation
- * - Agent execution endpoints
- * - Run management
- * - Health checks
+ * This client provides full access to the agent-server API including:
+ * - Agent definitions (list, create, update, delete)
+ * - Tools, workflows, and evaluations management
+ * - Run execution and monitoring
+ * - Scheduling
+ * - Scoring and aggregates
+ * - Model information
+ * - SSE streaming
+ * 
+ * Based on OpenAPI spec: specs/001-agent-management-rebuild/contracts/agent-server-api.yaml
  */
 
-//import { apiFetch } from './fetch-wrapper';
+const AGENT_API_URL = process.env.NEXT_PUBLIC_AGENT_API_URL || 'http://10.96.200.31:8000';
 
-const AGENT_API_URL = process.env.NEXT_PUBLIC_AGENT_API_URL || 'http://10.96.201.202:4111';
+// ==========================================================================
+// TYPES
+// ==========================================================================
 
-// Shadow fetch so all relative calls include basePath
-//const fetch = apiFetch;
+export interface AgentDefinition {
+  id: string;
+  name: string;
+  display_name?: string | null;
+  description?: string | null;
+  model: string;
+  instructions: string;
+  tools: Record<string, any>;
+  workflow?: Record<string, any> | null;
+  scopes: string[];
+  is_active: boolean;
+  version: number;
+  created_at: string;
+  updated_at: string;
+}
 
-/**
- * Helper function to handle API responses
- */
+export interface AgentDefinitionCreate {
+  name: string;
+  display_name?: string;
+  description?: string;
+  model: string;
+  instructions: string;
+  tools?: Record<string, any>;
+  workflow?: Record<string, any> | null;
+  scopes?: string[];
+  is_active?: boolean;
+}
+
+export interface Run {
+  id: string;
+  agent_id: string;
+  workflow_id?: string | null;
+  status: 'pending' | 'running' | 'succeeded' | 'failed' | 'timeout';
+  input: Record<string, any>;
+  output?: Record<string, any> | null;
+  events: RunEvent[];
+  created_by?: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface RunEvent {
+  timestamp: string;
+  type: string;
+  data: Record<string, any>;
+}
+
+export interface RunCreate {
+  agent_id: string;
+  workflow_id?: string | null;
+  input: Record<string, any>;
+}
+
+export interface ScheduleCreate {
+  agent_id: string;
+  cron: string;
+  input: Record<string, any>;
+  scopes: string[];
+  purpose: string;
+}
+
+export interface Schedule {
+  schedule_id: string;
+  message: string;
+}
+
+export interface TokenExchangeResponse {
+  access_token: string;
+  token_type: string;
+  expires_at: string;
+  scopes: string[];
+}
+
+// ==========================================================================
+// HELPER FUNCTIONS
+// ==========================================================================
+
 async function handleResponse(response: Response) {
   if (!response.ok) {
-    const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
-    throw new Error(errorData.error || errorData.detail || `HTTP error! status: ${response.status}`);
+    const errorData = await response.json().catch(() => ({ detail: 'Unknown error' }));
+    throw new Error(errorData.detail || errorData.error || `HTTP error! status: ${response.status}`);
   }
   return response.json();
 }
 
-/**
- * Get authentication headers for agent API
- * This will be called from Next.js API routes which have access to the user's token
- */
 export function getAgentApiHeaders(token?: string) {
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
@@ -44,85 +117,128 @@ export function getAgentApiHeaders(token?: string) {
 }
 
 // ==========================================================================
-// HEALTH & INFO
+// HEALTH & AUTH
 // ==========================================================================
 
-/**
- * Check agent API health
- */
-export async function checkAgentHealth() {
+export async function checkHealth() {
   const response = await fetch(`${AGENT_API_URL}/health`);
   return handleResponse(response);
 }
 
-/**
- * Get API information
- */
-export async function getAgentApiInfo() {
-  const response = await fetch(`${AGENT_API_URL}/`);
-  return handleResponse(response);
+export async function exchangeToken(scopes: string[], purpose: string, token?: string) {
+  const response = await fetch(`${AGENT_API_URL}/auth/exchange`, {
+    method: 'POST',
+    headers: getAgentApiHeaders(token),
+    body: JSON.stringify({ scopes, purpose }),
+  });
+  return handleResponse(response) as Promise<TokenExchangeResponse>;
 }
 
 // ==========================================================================
 // AGENTS
 // ==========================================================================
 
-/**
- * List all available agents
- */
-export async function listAgentsFromApi(token?: string) {
+export async function listAgents(token?: string) {
   const response = await fetch(`${AGENT_API_URL}/agents`, {
     headers: getAgentApiHeaders(token),
   });
-  return handleResponse(response);
+  return handleResponse(response) as Promise<AgentDefinition[]>;
 }
 
-/**
- * Get agent details
- */
-export async function getAgentDetails(agentId: string, token?: string) {
-  const response = await fetch(`${AGENT_API_URL}/agents/${agentId}`, {
-    headers: getAgentApiHeaders(token),
-  });
-  return handleResponse(response);
-}
-
-/**
- * Execute an agent (create a run)
- */
-export async function executeAgent(
-  agentId: string,
-  payload: {
-    input: string;
-    context?: Record<string, any>;
-    stream?: boolean;
-  },
-  token?: string
-) {
-  const response = await fetch(`${AGENT_API_URL}/agents/${agentId}/execute`, {
+export async function createAgentDefinition(data: AgentDefinitionCreate, token?: string) {
+  const response = await fetch(`${AGENT_API_URL}/agents/definitions`, {
     method: 'POST',
     headers: getAgentApiHeaders(token),
-    body: JSON.stringify(payload),
+    body: JSON.stringify(data),
+  });
+  return handleResponse(response) as Promise<AgentDefinition>;
+}
+
+export async function updateAgentDefinition(agentId: string, data: AgentDefinitionCreate, token?: string) {
+  const response = await fetch(`${AGENT_API_URL}/agents/definitions/${agentId}`, {
+    method: 'PUT',
+    headers: getAgentApiHeaders(token),
+    body: JSON.stringify(data),
+  });
+  return handleResponse(response) as Promise<AgentDefinition>;
+}
+
+export async function deleteAgent(agentId: string, token?: string) {
+  const response = await fetch(`${AGENT_API_URL}/agents/definitions/${agentId}`, {
+    method: 'DELETE',
+    headers: getAgentApiHeaders(token),
+  });
+  if (response.status === 204) {
+    return { success: true };
+  }
+  return handleResponse(response);
+}
+
+// ==========================================================================
+// TOOLS
+// ==========================================================================
+
+export async function listTools(token?: string) {
+  const response = await fetch(`${AGENT_API_URL}/agents/tools`, {
+    headers: getAgentApiHeaders(token),
   });
   return handleResponse(response);
 }
 
-/**
- * Query the weather agent (demo endpoint)
- */
-export async function queryWeatherAgent(query: string, token?: string) {
-  const response = await fetch(`${AGENT_API_URL}/agents/weather/query`, {
+export async function createTool(data: any, token?: string) {
+  const response = await fetch(`${AGENT_API_URL}/agents/tools`, {
     method: 'POST',
     headers: getAgentApiHeaders(token),
-    body: JSON.stringify({ query }),
+    body: JSON.stringify(data),
   });
   return handleResponse(response);
 }
 
-/**
- * List available models
- */
-export async function listAvailableModels(token?: string) {
+// ==========================================================================
+// WORKFLOWS
+// ==========================================================================
+
+export async function listWorkflows(token?: string) {
+  const response = await fetch(`${AGENT_API_URL}/agents/workflows`, {
+    headers: getAgentApiHeaders(token),
+  });
+  return handleResponse(response);
+}
+
+export async function createWorkflow(data: any, token?: string) {
+  const response = await fetch(`${AGENT_API_URL}/agents/workflows`, {
+    method: 'POST',
+    headers: getAgentApiHeaders(token),
+    body: JSON.stringify(data),
+  });
+  return handleResponse(response);
+}
+
+// ==========================================================================
+// EVALUATIONS
+// ==========================================================================
+
+export async function listEvals(token?: string) {
+  const response = await fetch(`${AGENT_API_URL}/agents/evals`, {
+    headers: getAgentApiHeaders(token),
+  });
+  return handleResponse(response);
+}
+
+export async function createEval(data: any, token?: string) {
+  const response = await fetch(`${AGENT_API_URL}/agents/evals`, {
+    method: 'POST',
+    headers: getAgentApiHeaders(token),
+    body: JSON.stringify(data),
+  });
+  return handleResponse(response);
+}
+
+// ==========================================================================
+// MODELS
+// ==========================================================================
+
+export async function listModels(token?: string) {
   const response = await fetch(`${AGENT_API_URL}/agents/models`, {
     headers: getAgentApiHeaders(token),
   });
@@ -133,142 +249,150 @@ export async function listAvailableModels(token?: string) {
 // RUNS
 // ==========================================================================
 
-/**
- * Get run details
- */
-export async function getRunDetails(runId: string, token?: string) {
+export async function createRun(data: RunCreate, token?: string) {
+  const response = await fetch(`${AGENT_API_URL}/runs`, {
+    method: 'POST',
+    headers: getAgentApiHeaders(token),
+    body: JSON.stringify(data),
+  });
+  return handleResponse(response) as Promise<Run>;
+}
+
+export async function getRun(runId: string, token?: string) {
   const response = await fetch(`${AGENT_API_URL}/runs/${runId}`, {
     headers: getAgentApiHeaders(token),
   });
-  return handleResponse(response);
+  return handleResponse(response) as Promise<Run>;
 }
 
-/**
- * List runs (optionally filtered by agent)
- */
-export async function listRuns(agentId?: string, token?: string) {
-  const url = agentId 
-    ? `${AGENT_API_URL}/runs?agent_id=${agentId}`
-    : `${AGENT_API_URL}/runs`;
+export async function listRuns(filters?: {
+  agent_id?: string;
+  status?: string;
+  created_by?: string;
+  limit?: number;
+  offset?: number;
+}, token?: string) {
+  const params = new URLSearchParams();
+  if (filters) {
+    Object.entries(filters).forEach(([key, value]) => {
+      if (value !== undefined) params.append(key, String(value));
+    });
+  }
   
+  const url = `${AGENT_API_URL}/runs${params.toString() ? `?${params}` : ''}`;
   const response = await fetch(url, {
     headers: getAgentApiHeaders(token),
   });
   return handleResponse(response);
 }
 
-/**
- * Stream run updates via SSE
- * Returns an EventSource for server-sent events
- */
-export function streamRunUpdates(runId: string, token?: string): EventSource {
-  const url = new URL(`${AGENT_API_URL}/runs/${runId}/stream`);
-  
-  // EventSource doesn't support custom headers, so we pass token as query param
-  if (token) {
-    url.searchParams.set('token', token);
+export async function executeWorkflow(data: {
+  workflow_id: string;
+  input: Record<string, any>;
+  tier?: string;
+  scopes?: string[];
+}, token?: string) {
+  const response = await fetch(`${AGENT_API_URL}/runs/workflow`, {
+    method: 'POST',
+    headers: getAgentApiHeaders(token),
+    body: JSON.stringify(data),
+  });
+  return handleResponse(response) as Promise<Run>;
+}
+
+// ==========================================================================
+// SCHEDULES
+// ==========================================================================
+
+export async function createSchedule(data: ScheduleCreate, token?: string) {
+  const response = await fetch(`${AGENT_API_URL}/runs/schedule`, {
+    method: 'POST',
+    headers: getAgentApiHeaders(token),
+    body: JSON.stringify(data),
+  });
+  return handleResponse(response) as Promise<Schedule>;
+}
+
+export async function listSchedules(token?: string) {
+  const response = await fetch(`${AGENT_API_URL}/runs/schedule`, {
+    headers: getAgentApiHeaders(token),
+  });
+  return handleResponse(response);
+}
+
+export async function deleteSchedule(jobId: string, token?: string) {
+  const response = await fetch(`${AGENT_API_URL}/runs/schedule/${jobId}`, {
+    method: 'DELETE',
+    headers: getAgentApiHeaders(token),
+  });
+  if (response.status === 204) {
+    return { success: true };
+  }
+  return handleResponse(response);
+}
+
+// ==========================================================================
+// SCORES
+// ==========================================================================
+
+export async function executeScorer(data: {
+  scorer_id: string;
+  run_ids: string[];
+}, token?: string) {
+  const response = await fetch(`${AGENT_API_URL}/scores/execute`, {
+    method: 'POST',
+    headers: getAgentApiHeaders(token),
+    body: JSON.stringify(data),
+  });
+  return handleResponse(response);
+}
+
+export async function getScoreAggregates(filters?: {
+  scorer_id?: string;
+  agent_id?: string;
+}, token?: string) {
+  const params = new URLSearchParams();
+  if (filters) {
+    Object.entries(filters).forEach(([key, value]) => {
+      if (value !== undefined) params.append(key, value);
+    });
   }
   
-  return new EventSource(url.toString());
-}
-
-// ==========================================================================
-// WORKFLOWS
-// ==========================================================================
-
-/**
- * List all workflows
- */
-export async function listWorkflowsFromApi(token?: string) {
-  const response = await fetch(`${AGENT_API_URL}/workflows`, {
+  const url = `${AGENT_API_URL}/scores/aggregates${params.toString() ? `?${params}` : ''}`;
+  const response = await fetch(url, {
     headers: getAgentApiHeaders(token),
   });
   return handleResponse(response);
 }
 
-/**
- * Execute a workflow
- */
-export async function executeWorkflow(
-  workflowId: string,
-  payload: {
-    input: Record<string, any>;
-    context?: Record<string, any>;
-  },
-  token?: string
-) {
-  const response = await fetch(`${AGENT_API_URL}/workflows/${workflowId}/execute`, {
-    method: 'POST',
-    headers: getAgentApiHeaders(token),
-    body: JSON.stringify(payload),
-  });
-  return handleResponse(response);
-}
-
 // ==========================================================================
-// TOOLS
+// STREAMING (SSE)
 // ==========================================================================
 
 /**
- * List all tools
+ * Stream run updates via Server-Sent Events
+ * Note: This should typically be called from a Next.js API route that proxies
+ * the SSE stream, as EventSource doesn't support custom headers
  */
-export async function listToolsFromApi(token?: string) {
-  const response = await fetch(`${AGENT_API_URL}/tools`, {
-    headers: getAgentApiHeaders(token),
-  });
-  return handleResponse(response);
+export function streamRunUpdates(runId: string): EventSource {
+  // This will be called from /api/streams/runs/[id] which handles auth
+  return new EventSource(`/api/streams/runs/${runId}`);
 }
 
 /**
- * Execute a tool directly
+ * Server-side SSE stream (for use in API routes)
  */
-export async function executeTool(
-  toolId: string,
-  payload: Record<string, any>,
-  token?: string
-) {
-  const response = await fetch(`${AGENT_API_URL}/tools/${toolId}/execute`, {
-    method: 'POST',
-    headers: getAgentApiHeaders(token),
-    body: JSON.stringify(payload),
+export async function getRunStreamResponse(runId: string, token?: string): Promise<Response> {
+  const response = await fetch(`${AGENT_API_URL}/streams/runs/${runId}`, {
+    headers: {
+      'Authorization': token ? `Bearer ${token}` : '',
+      'Accept': 'text/event-stream',
+    },
   });
-  return handleResponse(response);
+  
+  if (!response.ok) {
+    throw new Error(`Failed to stream run: ${response.status}`);
+  }
+  
+  return response;
 }
-
-// ==========================================================================
-// EVALS
-// ==========================================================================
-
-/**
- * List all evaluations
- */
-export async function listEvalsFromApi(token?: string) {
-  const response = await fetch(`${AGENT_API_URL}/evals`, {
-    headers: getAgentApiHeaders(token),
-  });
-  return handleResponse(response);
-}
-
-/**
- * Run an evaluation
- */
-export async function runEval(
-  evalId: string,
-  payload: {
-    agent_id: string;
-    test_cases: Array<{
-      input: string;
-      expected_output?: string;
-      context?: Record<string, any>;
-    }>;
-  },
-  token?: string
-) {
-  const response = await fetch(`${AGENT_API_URL}/evals/${evalId}/run`, {
-    method: 'POST',
-    headers: getAgentApiHeaders(token),
-    body: JSON.stringify(payload),
-  });
-  return handleResponse(response);
-}
-
