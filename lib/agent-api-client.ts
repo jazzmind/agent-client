@@ -366,6 +366,36 @@ export async function getScoreAggregates(filters?: {
 }
 
 // ==========================================================================
+// DISPATCHER
+// ==========================================================================
+
+export interface DispatcherRequest {
+  query: string;
+  available_tools: Array<{ name: string; description: string }>;
+  available_agents: Array<{ id: string; name: string; description?: string }>;
+  attachments?: Array<{ name: string; type: string; url: string }>;
+  user_settings?: Record<string, any>;
+}
+
+export interface DispatcherResponse {
+  selected_tools: string[];
+  selected_agents: string[];
+  confidence: number;
+  reasoning: string;
+  alternatives: string[];
+  requires_disambiguation: boolean;
+}
+
+export async function routeQuery(data: DispatcherRequest, token?: string) {
+  const response = await fetch(`${AGENT_API_URL}/dispatcher/route`, {
+    method: 'POST',
+    headers: getAgentApiHeaders(token),
+    body: JSON.stringify(data),
+  });
+  return handleResponse(response) as Promise<DispatcherResponse>;
+}
+
+// ==========================================================================
 // STREAMING (SSE)
 // ==========================================================================
 
