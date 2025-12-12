@@ -1,20 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server';
 import * as agentClient from '@/lib/agent-api-client';
 import { getTokenFromRequest, getUserIdFromToken } from '@/lib/auth-helper';
-import { db } from '@/lib/db';
 
 /**
  * POST /api/chat
  * Send a chat message with intelligent dispatcher routing
  * 
  * Flow:
- * 1. Save user message to database
- * 2. Load available tools and agents
- * 3. Call dispatcher to get routing decision
- * 4. If disambiguation needed, return routing options
- * 5. Otherwise, execute selected tools/agents
- * 6. Save assistant response
- * 7. Return messages with runId for streaming
+ * 1. Get or create conversation via agent-server
+ * 2. Save user message via agent-server
+ * 3. Load available tools and agents
+ * 4. Get user's chat settings
+ * 5. Call dispatcher to get routing decision
+ * 6. If disambiguation needed, return routing options
+ * 7. Otherwise, execute selected tools/agents
+ * 8. Save assistant response via agent-server
+ * 9. Return messages with runId for streaming
  */
 export async function POST(request: NextRequest) {
   try {
@@ -37,53 +38,30 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { conversation_id, message, attachments = [], user_override = null } = body;
 
-    // Load user's chat settings
-    let settings = await db.chatSettings.findUnique({
-      where: { userId },
-    });
-
-    if (!settings) {
-      settings = await db.chatSettings.create({
-        data: {
-          userId,
-          enabledTools: ['doc_search', 'web_search'],
-          enabledAgents: [],
-          temperature: 0.7,
-          maxTokens: 2000,
-        },
-      });
-    }
-
-    // Get or create conversation
+    // Get or create conversation via agent-server
     let conversation;
     if (conversation_id) {
-      conversation = await db.conversation.findUnique({
-        where: { id: conversation_id },
-      });
-      if (!conversation || conversation.userId !== userId) {
-        return NextResponse.json(
-          { error: 'Conversation not found' },
-          { status: 404 }
-        );
-      }
+      conversation = await agentClient.getConversation(conversation_id, token);
     } else {
-      conversation = await db.conversation.create({
-        data: {
-          title: message.substring(0, 50),
-          userId,
-        },
-      });
+      conversation = await agentClient.createConversation(
+        { title: message.substring(0, 50) },
+        token
+      );
     }
 
-    // Save user message
-    const userMessage = await db.message.create({
-      data: {
-        conversationId: conversation.id,
+    // Save user message via agent-server
+    const userMessage = await agentClient.createMessage(
+      conversation.id,
+      {
         role: 'user',
         content: message,
-        attachments: attachments.length > 0 ? attachments : null,
+        attachments: attachments.length > 0 ? attachments : undefined,
       },
-    });
+      token
+    );
+
+    // Get user's chat settings from agent-server
+    const settings = await agentClient.getChatSettings(token);
 
     // Load available tools and agents (filtered by user settings)
     const [allTools, allAgents] = await Promise.all([
@@ -93,14 +71,14 @@ export async function POST(request: NextRequest) {
 
     // Filter by enabled settings
     const availableTools = allTools
-      .filter((t: any) => settings!.enabledTools.includes(t.name))
+      .filter((t: any) => settings.enabled_tools.includes(t.name))
       .map((t: any) => ({
         name: t.name,
         description: t.description || '',
       }));
 
     const availableAgents = allAgents
-      .filter((a: any) => settings!.enabledAgents.includes(a.id))
+      .filter((a: any) => settings.enabled_agents.includes(a.id))
       .map((a: any) => ({
         id: a.id,
         name: a.name,
@@ -129,7 +107,7 @@ export async function POST(request: NextRequest) {
         attachments,
         user_settings: {
           temperature: settings.temperature,
-          max_tokens: settings.maxTokens,
+          max_tokens: settings.max_tokens,
           model: settings.model,
         },
       }, token);
@@ -147,7 +125,7 @@ export async function POST(request: NextRequest) {
           role: userMessage.role,
           content: userMessage.content,
           attachments: userMessage.attachments,
-          created_at: userMessage.createdAt.toISOString(),
+          created_at: userMessage.created_at,
         },
       });
     }
@@ -170,6 +148,7 @@ export async function POST(request: NextRequest) {
           query: message,
           attachments,
           selected_tools: routingDecision.selected_tools,
+          conversation_id: conversation.id,
         },
       }, token);
 
@@ -180,22 +159,17 @@ export async function POST(request: NextRequest) {
       responseContent = 'I\'m not sure how to help with that. Could you rephrase your question?';
     }
 
-    // Create assistant message
-    const assistantMessage = await db.message.create({
-      data: {
-        conversationId: conversation.id,
+    // Create assistant message via agent-server
+    const assistantMessage = await agentClient.createMessage(
+      conversation.id,
+      {
         role: 'assistant',
         content: responseContent,
-        runId,
-        routingDecision: routingDecision as any,
+        run_id: runId || undefined,
+        routing_decision: routingDecision,
       },
-    });
-
-    // Update conversation
-    await db.conversation.update({
-      where: { id: conversation.id },
-      data: { updatedAt: new Date() },
-    });
+      token
+    );
 
     return NextResponse.json({
       userMessage: {
@@ -204,7 +178,7 @@ export async function POST(request: NextRequest) {
         role: userMessage.role,
         content: userMessage.content,
         attachments: userMessage.attachments,
-        created_at: userMessage.createdAt.toISOString(),
+        created_at: userMessage.created_at,
       },
       assistantMessage: {
         id: assistantMessage.id,
@@ -213,13 +187,13 @@ export async function POST(request: NextRequest) {
         content: assistantMessage.content,
         run_id: runId,
         routing_decision: routingDecision,
-        created_at: assistantMessage.createdAt.toISOString(),
+        created_at: assistantMessage.created_at,
       },
       conversation: {
         id: conversation.id,
         title: conversation.title,
-        created_at: conversation.createdAt.toISOString(),
-        updated_at: conversation.updatedAt.toISOString(),
+        created_at: conversation.created_at,
+        updated_at: conversation.updated_at,
       },
       runId, // For SSE streaming
       requires_disambiguation: false,

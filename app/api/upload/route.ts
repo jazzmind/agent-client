@@ -1,15 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
+import * as ingestClient from '@/lib/ingest-api-client';
 import { getTokenFromRequest } from '@/lib/auth-helper';
 
 /**
  * POST /api/upload
- * Upload files for chat attachments
+ * Upload files to ingest API
  * 
- * This endpoint:
- * 1. Receives multipart/form-data with files
- * 2. Validates file types and sizes
- * 3. Uploads to MinIO (files-lxc) - TODO: implement MinIO integration
- * 4. Returns file metadata with URLs
+ * Files are:
+ * 1. Uploaded to MinIO
+ * 2. Processed for text extraction
+ * 3. Embedded and stored in Milvus
+ * 4. Added to conversation-scoped knowledge base
  */
 export async function POST(request: NextRequest) {
   try {
@@ -23,6 +24,14 @@ export async function POST(request: NextRequest) {
 
     const formData = await request.formData();
     const files = formData.getAll('files') as File[];
+    const conversationId = formData.get('conversation_id') as string;
+
+    if (!conversationId) {
+      return NextResponse.json(
+        { error: 'conversation_id is required' },
+        { status: 400 }
+      );
+    }
 
     if (files.length === 0) {
       return NextResponse.json(
@@ -31,93 +40,45 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Validate files
-    const maxFileSize = 10 * 1024 * 1024; // 10MB
-    const allowedTypes = [
+    // Validate file types and sizes
+    const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50 MB
+    const ALLOWED_TYPES = [
       'application/pdf',
       'application/msword',
       'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
       'text/plain',
-      'image/jpeg',
+      'text/markdown',
       'image/png',
+      'image/jpeg',
       'image/gif',
+      'image/webp',
     ];
 
-    const uploadedFiles = [];
-
     for (const file of files) {
-      // Validate file size
-      if (file.size > maxFileSize) {
+      if (file.size > MAX_FILE_SIZE) {
         return NextResponse.json(
-          { error: `File ${file.name} exceeds maximum size of 10MB` },
+          { error: `File ${file.name} exceeds maximum size of 50 MB` },
           { status: 400 }
         );
       }
 
-      // Validate file type
-      if (!allowedTypes.includes(file.type)) {
+      if (!ALLOWED_TYPES.includes(file.type)) {
         return NextResponse.json(
           { error: `File type ${file.type} is not allowed` },
           { status: 400 }
         );
       }
-
-      // TODO: Upload to MinIO
-      // For now, create a mock URL
-      const fileId = `file-${Date.now()}-${Math.random().toString(36).substring(7)}`;
-      const fileUrl = `/uploads/${fileId}/${file.name}`;
-
-      // In production, this would upload to MinIO:
-      // const buffer = await file.arrayBuffer();
-      // const minioUrl = await uploadToMinIO(buffer, file.name, file.type);
-
-      uploadedFiles.push({
-        id: fileId,
-        name: file.name,
-        type: file.type,
-        size: file.size,
-        url: fileUrl,
-        uploaded_at: new Date().toISOString(),
-      });
     }
+
+    // Upload files to ingest API
+    const uploadedFiles = await ingestClient.uploadFiles(files, conversationId, token);
 
     return NextResponse.json(uploadedFiles);
   } catch (error: any) {
     console.error('[API] Upload error:', error);
     return NextResponse.json(
       { error: error.message || 'Failed to upload files' },
-      { status: 500 }
+      { status: error.statusCode || 500 }
     );
   }
 }
-
-/**
- * TODO: Implement MinIO upload
- * 
- * async function uploadToMinIO(
- *   buffer: ArrayBuffer,
- *   filename: string,
- *   contentType: string
- * ): Promise<string> {
- *   const minioClient = new MinIO.Client({
- *     endPoint: process.env.MINIO_ENDPOINT || 'files-lxc',
- *     port: parseInt(process.env.MINIO_PORT || '9000'),
- *     useSSL: false,
- *     accessKey: process.env.MINIO_ACCESS_KEY,
- *     secretKey: process.env.MINIO_SECRET_KEY,
- *   });
- * 
- *   const bucketName = 'chat-attachments';
- *   const objectName = `${Date.now()}-${filename}`;
- * 
- *   await minioClient.putObject(
- *     bucketName,
- *     objectName,
- *     Buffer.from(buffer),
- *     buffer.byteLength,
- *     { 'Content-Type': contentType }
- *   );
- * 
- *   return `http://files-lxc:9000/${bucketName}/${objectName}`;
- * }
- */
