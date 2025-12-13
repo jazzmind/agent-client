@@ -39,9 +39,10 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const queryString = searchParams.toString();
     
-    const authHeaders = await getAdminHeaders();
+    const token = getTokenFromRequest(request);
+    const authHeaders = getAuthHeaders(token);
     
-    const response = await fetch(`${baseUrl}/admin/agents${queryString ? `?${queryString}` : ''}`, {
+    const response = await fetch(`${baseUrl}/agents${queryString ? `?${queryString}` : ''}`, {
       method: 'GET',
       headers: authHeaders,
     });
