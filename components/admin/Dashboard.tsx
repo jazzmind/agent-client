@@ -147,7 +147,7 @@ export default function Dashboard() {
       {/* Welcome Header */}
       <div className="bg-gradient-to-r from-blue-600 to-indigo-600 rounded-2xl p-8 text-white shadow-lg">
         <h1 className="text-3xl font-bold mb-2">Welcome back, Admin! 👋</h1>
-        <p className="text-blue-100">Your Mastra system is running smoothly. Here's what's happening today.</p>
+        <p className="text-blue-100">Your agent system is running smoothly. Here's what's happening today.</p>
       </div>
 
       {/* Stats Grid */}

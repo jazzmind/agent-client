@@ -253,7 +253,7 @@ export async function getAvailableAgents() {
 }
 
 export async function getAvailableProcessors() {
-  // Processors are a Mastra concept - return empty array for now
+  // Processors are not yet implemented - return empty array
   // TODO: Implement if agent-server adds processor support
   return [];
 }

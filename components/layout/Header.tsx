@@ -18,7 +18,7 @@ type Identity = {
   subject?: string;
 };
 
-export function Header({ basePath = '', mastraUrl, portalUrl = '/' }: HeaderProps) {
+export function Header({ basePath = '', portalUrl = '/' }: HeaderProps) {
   const [identity, setIdentity] = useState<Identity>({});
   const [loadingIdentity, setLoadingIdentity] = useState(false);
   const [theme, setTheme] = useState<'light' | 'dark'>('light');
