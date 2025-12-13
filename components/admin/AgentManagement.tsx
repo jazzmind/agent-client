@@ -112,7 +112,7 @@ export default function AgentManagement() {
         getAvailableTools(),
         getAvailableWorkflows(),
         getAvailableScorers(),
-        getAvailableAgents(selectedAgent?.id),
+        getAvailableAgents(),
         getAvailableProcessors()
       ]);
       
@@ -120,7 +120,7 @@ export default function AgentManagement() {
       setAvailableWorkflows(workflowsData.workflows || []);
       setAvailableScorers(scorersData.scorers || []);
       setAvailableAgents(agentsData.agents || []);
-      setAvailableProcessors(processorsData.processors || []);
+      setAvailableProcessors(processorsData || []);
     } catch (err) {
       console.error('Failed to load available resources:', err);
       setError(err instanceof Error ? err.message : 'Failed to load resources');
@@ -157,25 +157,12 @@ export default function AgentManagement() {
     try {
       await updateAgent(selectedAgent.id, {
         name: selectedAgent.name,
-        displayName: selectedAgent.display_name,
+        display_name: selectedAgent.display_name,
         description: selectedAgent.description,
         instructions: selectedAgent.instructions,
         model: selectedAgent.model,
-        maxRetries: selectedAgent.max_retries,
         tools: selectedAgent.tools,
-        workflows: selectedAgent.workflows,
-        agents: selectedAgent.agents,
-        scorers: selectedAgent.scorers,
-        evals: selectedAgent.evals,
-        memoryConfig: selectedAgent.memory_config,
-        voiceConfig: selectedAgent.voice_config,
-        inputProcessors: selectedAgent.input_processors,
-        outputProcessors: selectedAgent.output_processors,
-        defaultGenerateOptions: selectedAgent.default_generate_options,
-        defaultStreamOptions: selectedAgent.default_stream_options,
-        telemetryEnabled: selectedAgent.telemetry_enabled,
         scopes: selectedAgent.scopes,
-        isActive: selectedAgent.is_active
       });
       setIsEditing(false);
       await loadAgents(); // Reload the list
