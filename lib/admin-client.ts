@@ -4,9 +4,6 @@
  * This client provides a simplified interface for admin operations,
  * calling Next.js API routes which handle server-side authentication
  * and proxy requests to the Python agent-server.
- * 
- * All Mastra dependencies have been removed. This now uses the
- * Python agent-server API exclusively.
  */
 
 // Helper function to handle API responses
