@@ -12,9 +12,9 @@ const AGENT_API_URL = process.env.NEXT_PUBLIC_AGENT_API_URL || 'http://10.96.200
  */
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  const runId = params.id;
+  const { id: runId } = await params;
 
   try {
     // Get authentication token

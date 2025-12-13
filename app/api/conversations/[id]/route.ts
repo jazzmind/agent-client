@@ -8,9 +8,10 @@ import { getTokenFromRequest } from '@/lib/auth-helper';
  */
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const token = getTokenFromRequest(request);
     if (!token) {
       return NextResponse.json(
@@ -19,7 +20,7 @@ export async function GET(
       );
     }
 
-    const conversation = await agentClient.getConversation(params.id, token);
+    const conversation = await agentClient.getConversation(id, token);
     return NextResponse.json(conversation);
   } catch (error: any) {
     console.error('[API] Get conversation error:', error);
@@ -36,9 +37,10 @@ export async function GET(
  */
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const token = getTokenFromRequest(request);
     if (!token) {
       return NextResponse.json(
@@ -47,7 +49,7 @@ export async function DELETE(
       );
     }
 
-    await agentClient.deleteConversation(params.id, token);
+    await agentClient.deleteConversation(id, token);
     return new NextResponse(null, { status: 204 });
   } catch (error: any) {
     console.error('[API] Delete conversation error:', error);

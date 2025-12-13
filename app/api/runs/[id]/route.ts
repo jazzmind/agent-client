@@ -8,11 +8,12 @@ import { getTokenFromRequest } from '@/lib/auth-helper';
  */
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const token = getTokenFromRequest(request);
-    const run = await agentClient.getRun(params.id, token);
+    const run = await agentClient.getRun(id, token);
     return NextResponse.json(run);
   } catch (error: any) {
     console.error('[API] Failed to get run:', error);

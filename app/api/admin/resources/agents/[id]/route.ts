@@ -16,13 +16,14 @@ function getTokenFromRequest(request: NextRequest): string | undefined {
 // Update an agent
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const token = getTokenFromRequest(request);
     const body = await request.json();
     
-    const agent = await agentClient.updateAgentDefinition(params.id, body, token);
+    const agent = await agentClient.updateAgentDefinition(id, body, token);
     return NextResponse.json(agent);
   } catch (error: any) {
     console.error('Failed to update agent:', error);
@@ -36,11 +37,12 @@ export async function PUT(
 // Delete an agent
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const token = getTokenFromRequest(request);
-    await agentClient.deleteAgent(params.id, token);
+    await agentClient.deleteAgent(id, token);
     return new NextResponse(null, { status: 204 });
   } catch (error: any) {
     console.error('Failed to delete agent:', error);

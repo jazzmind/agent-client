@@ -8,15 +8,16 @@ import { getTokenFromRequest } from '@/lib/auth-helper';
  */
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const token = getTokenFromRequest(request);
     
     // Note: agent-server doesn't have individual GET endpoint yet
     // So we list all and filter (or this will be added in agent-server-requirements.md)
     const agents = await agentClient.listAgents(token);
-    const agent = agents.find((a: any) => a.id === params.id);
+    const agent = agents.find((a: any) => a.id === id);
     
     if (!agent) {
       return NextResponse.json(
