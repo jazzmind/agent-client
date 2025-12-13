@@ -79,11 +79,6 @@ export function Header({ basePath = '', portalUrl = '/' }: HeaderProps) {
               <div className="text-[11px] text-white/70">Admin & Simulator</div>
             </div>
           </Link>
-          {mastraUrl && (
-            <span className="text-[11px] text-white/80 px-2 py-1 rounded-full bg-white/10 border border-white/10">
-              Connected: {mastraUrl}
-            </span>
-          )}
         </div>
 
         <div className="flex items-center gap-3">
