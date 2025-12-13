@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getAdminIdentity } from '../../../../lib/admin-auth';
+import { getTokenFromRequest, getScopesFromToken, getUserIdFromToken } from '@/lib/auth-helper';
 
-const AGENT_API_URL = process.env.NEXT_PUBLIC_AGENT_API_URL || 'http://10.96.201.202:4111';
+const AGENT_API_URL = process.env.NEXT_PUBLIC_AGENT_API_URL || 'http://10.96.200.202:8000';
 
 /**
  * Query the weather agent
@@ -18,11 +18,21 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Get authenticated token from admin identity
-    const identity = await getAdminIdentity();
+    // Get authenticated token
+    const token = getTokenFromRequest(request);
+    
+    if (!token) {
+      return NextResponse.json(
+        { error: 'Authentication required' },
+        { status: 401 }
+      );
+    }
     
     // Check if user has weather role/scope
-    const hasWeatherAccess = identity.scopes.some(scope => 
+    const scopes = getScopesFromToken(token);
+    const userId = getUserIdFromToken(token);
+    
+    const hasWeatherAccess = scopes.some(scope => 
       scope.includes('weather') || scope.includes('admin') || scope.includes('agent')
     );
 
@@ -31,7 +41,7 @@ export async function POST(request: NextRequest) {
         { 
           error: 'Access denied. Weather functionality requires the "weather" role.',
           requiredScopes: ['weather.read', 'agent.execute'],
-          userScopes: identity.scopes
+          userScopes: scopes
         },
         { status: 403 }
       );
@@ -42,7 +52,7 @@ export async function POST(request: NextRequest) {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${identity.token}`,
+        'Authorization': `Bearer ${token}`,
       },
       body: JSON.stringify({ query }),
     });
@@ -63,8 +73,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       ...data,
       success: true,
-      clientId: identity.clientId,
-      scopes: identity.scopes,
+      userId: userId,
+      scopes: scopes,
     });
 
   } catch (error: any) {

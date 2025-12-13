@@ -1,21 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getAdminHeaders } from '@/lib/admin-auth';
+import { getTokenFromRequest, getAuthHeaders } from '@/lib/auth-helper';
 
-const baseUrl = process.env.MASTRA_API_URL || 'https://agent-sundai.vercel.app';
+const baseUrl = process.env.NEXT_PUBLIC_AGENT_API_URL || 'http://10.96.200.202:8000';
 
 // Create a new agent
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     
-    const authHeaders = await getAdminHeaders();
+    const token = getTokenFromRequest(request);
+    const authHeaders = getAuthHeaders(token);
     
-    const response = await fetch(`${baseUrl}/admin/agents`, {
+    const response = await fetch(`${baseUrl}/agents`, {
       method: 'POST',
-      headers: {
-        ...authHeaders,
-        'Content-Type': 'application/json',
-      },
+      headers: authHeaders,
       body: JSON.stringify(body),
     });
 

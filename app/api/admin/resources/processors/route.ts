@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getAdminHeaders } from '@/lib/admin-auth';
+import { getTokenFromRequest, getAuthHeaders } from '@/lib/auth-helper';
 
-const baseUrl = process.env.MASTRA_API_URL || 'https://agent-sundai.vercel.app';
+const baseUrl = process.env.NEXT_PUBLIC_AGENT_API_URL || 'http://10.96.200.202:8000';
 
 export async function GET(request: NextRequest) {
   try {
-    const authHeaders = await getAdminHeaders();
+    const token = getTokenFromRequest(request);
+    const authHeaders = getAuthHeaders(token);
     
     const response = await fetch(`${baseUrl}/api/resources/processors`, {
       method: 'GET',

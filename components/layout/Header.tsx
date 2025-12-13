@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { LayoutGrid, Moon, Sun } from 'lucide-react';
-import { getAdminIdentity } from '@/lib/admin-auth';
+import { getTokenFromClient, parseJWTPayload, getScopesFromToken, getUserIdFromToken } from '@/lib/auth-helper';
 
 interface HeaderProps {
   basePath?: string;
@@ -38,16 +38,22 @@ export function Header({ basePath = '', portalUrl = '/' }: HeaderProps) {
     const loadIdentity = async () => {
       setLoadingIdentity(true);
       try {
-        const info = await getAdminIdentity();
-        setIdentity({
-          clientId: info.clientId,
-          scopes: info.scopes,
-          expiresAt: info.expiresAt,
-          issuer: info.issuer,
-          subject: info.subject,
-        });
+        const token = getTokenFromClient();
+        if (token) {
+          const payload = parseJWTPayload(token);
+          const scopes = getScopesFromToken(token);
+          const userId = getUserIdFromToken(token);
+          
+          setIdentity({
+            clientId: payload?.client_id || payload?.azp || 'unknown',
+            scopes: scopes,
+            expiresAt: payload?.exp,
+            issuer: payload?.iss,
+            subject: userId || payload?.sub || 'user',
+          });
+        }
       } catch (error) {
-        console.error('Failed to load admin identity', error);
+        console.error('Failed to load identity from token', error);
       } finally {
         setLoadingIdentity(false);
       }
