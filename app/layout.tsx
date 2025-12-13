@@ -27,14 +27,13 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   const basePath = process.env.NEXT_PUBLIC_BASE_PATH || "";
-  const mastraUrl = process.env.MASTRA_API_URL || "";
   return (
     <html lang="en">
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased bg-gray-50`}
       >
         <FetchWrapper />
-        <Header basePath={basePath} mastraUrl={mastraUrl} />
+        <Header basePath={basePath} />
         <main className="min-h-screen">{children}</main>
         <Footer />
         <VersionBar version={process.env.NEXT_PUBLIC_VERSION} />

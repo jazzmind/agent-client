@@ -7,7 +7,6 @@ import { getAdminIdentity } from '@/lib/admin-auth';
 
 interface HeaderProps {
   basePath?: string;
-  mastraUrl?: string;
   portalUrl?: string;
 }
 
