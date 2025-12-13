@@ -1,208 +1,161 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import * as agentClient from '@/lib/agent-api-client';
 import { getTokenFromRequest, getUserIdFromToken } from '@/lib/auth-helper';
 
 /**
  * POST /api/chat
- * Send a chat message with intelligent dispatcher routing
- * 
- * Flow:
- * 1. Get or create conversation via agent-server
- * 2. Save user message via agent-server
- * 3. Load available tools and agents
- * 4. Get user's chat settings
- * 5. Call dispatcher to get routing decision
- * 6. If disambiguation needed, return routing options
- * 7. Otherwise, execute selected tools/agents
- * 8. Save assistant response via agent-server
- * 9. Return messages with runId for streaming
+ * Streaming chat endpoint used by @jazzmind/busibox-app `ChatInterface`.
+ *
+ * Request body (library contract):
+ * - messages: Array<{ role: 'user'|'assistant'|'system', content: string }>
+ * - model?: string
+ *
+ * Response:
+ * - text/plain streamed response containing the assistant's final message.
  */
 export async function POST(request: NextRequest) {
   try {
     const token = getTokenFromRequest(request);
     if (!token) {
-      return NextResponse.json(
-        { error: 'Authentication required' },
-        { status: 401 }
-      );
+      return new Response(JSON.stringify({ error: 'Authentication required' }), {
+        status: 401,
+        headers: { 'Content-Type': 'application/json' },
+      });
     }
 
     const userId = getUserIdFromToken(token);
     if (!userId) {
-      return NextResponse.json(
-        { error: 'Invalid token' },
-        { status: 401 }
-      );
-    }
-
-    const body = await request.json();
-    const { conversation_id, message, attachments = [], user_override = null } = body;
-
-    // Get or create conversation via agent-server
-    let conversation;
-    if (conversation_id) {
-      conversation = await agentClient.getConversation(conversation_id, token);
-    } else {
-      conversation = await agentClient.createConversation(
-        { title: message.substring(0, 50) },
-        token
-      );
-    }
-
-    // Save user message via agent-server
-    const userMessage = await agentClient.createMessage(
-      conversation.id,
-      {
-        role: 'user',
-        content: message,
-        attachments: attachments.length > 0 ? attachments : undefined,
-      },
-      token
-    );
-
-    // Get user's chat settings from agent-server
-    const settings = await agentClient.getChatSettings(token);
-
-    // Load available tools and agents (filtered by user settings)
-    const [allTools, allAgents] = await Promise.all([
-      agentClient.listTools(token),
-      agentClient.listAgents(token),
-    ]);
-
-    // Filter by enabled settings
-    const availableTools = allTools
-      .filter((t: any) => settings.enabled_tools.includes(t.name))
-      .map((t: any) => ({
-        name: t.name,
-        description: t.description || '',
-      }));
-
-    const availableAgents = allAgents
-      .filter((a: any) => settings.enabled_agents.includes(a.id))
-      .map((a: any) => ({
-        id: a.id,
-        name: a.name,
-        description: a.description || '',
-      }));
-
-    // Call dispatcher (unless user provided override)
-    let routingDecision;
-    
-    if (user_override) {
-      // User explicitly selected tools/agents
-      routingDecision = {
-        selected_tools: user_override.tools || [],
-        selected_agents: user_override.agents || [],
-        confidence: 1.0,
-        reasoning: 'User override',
-        alternatives: [],
-        requires_disambiguation: false,
-      };
-    } else {
-      // Let dispatcher decide
-      routingDecision = await agentClient.routeQuery({
-        query: message,
-        available_tools: availableTools,
-        available_agents: availableAgents,
-        attachments,
-        user_settings: {
-          temperature: settings.temperature,
-          max_tokens: settings.max_tokens,
-          model: settings.model,
-        },
-      }, token);
-    }
-
-    // Check if disambiguation is needed
-    if (routingDecision.requires_disambiguation) {
-      // Return routing options for user to choose
-      return NextResponse.json({
-        requires_disambiguation: true,
-        routing_decision: routingDecision,
-        userMessage: {
-          id: userMessage.id,
-          conversation_id: conversation.id,
-          role: userMessage.role,
-          content: userMessage.content,
-          attachments: userMessage.attachments,
-          created_at: userMessage.created_at,
-        },
+      return new Response(JSON.stringify({ error: 'Invalid token' }), {
+        status: 401,
+        headers: { 'Content-Type': 'application/json' },
       });
     }
 
-    // Execute the routing decision
-    // For now, we'll create a single run with the dispatcher's decision
-    // In the future, this could execute multiple tools/agents in parallel
-    
-    let runId: string | null = null;
-    let responseContent = '';
+    const body = await request.json();
+    const messages = Array.isArray(body?.messages) ? body.messages : [];
+    const modelOverride = typeof body?.model === 'string' ? body.model : undefined;
 
-    if (routingDecision.selected_tools.length > 0 || routingDecision.selected_agents.length > 0) {
-      // Execute via an agent that uses the selected tools
-      // For now, use a generic "executor" agent or the first selected agent
-      const agentId = routingDecision.selected_agents[0] || 'chat-assistant';
-      
-      const run = await agentClient.createRun({
-        agent_id: agentId,
-        input: {
-          query: message,
-          attachments,
-          selected_tools: routingDecision.selected_tools,
-          conversation_id: conversation.id,
-        },
-      }, token);
-
-      runId = run.id;
-      responseContent = 'Processing your request...';
-    } else {
-      // No tools/agents selected - direct response
-      responseContent = 'I\'m not sure how to help with that. Could you rephrase your question?';
+    const lastUser = [...messages].reverse().find((m: any) => m?.role === 'user' && typeof m?.content === 'string');
+    const prompt = (lastUser?.content ?? '').trim();
+    if (!prompt) {
+      return new Response('Please enter a message.', { status: 400 });
     }
 
-    // Create assistant message via agent-server
-    const assistantMessage = await agentClient.createMessage(
-      conversation.id,
+    // Settings still control tool/agent routing (even though the UI is simplified).
+    const settings = await agentClient.getChatSettings(token);
+    const [allTools, allAgents] = await Promise.all([agentClient.listTools(token), agentClient.listAgents(token)]);
+
+    const availableTools = allTools
+      .filter((t: any) => settings.enabled_tools.includes(t.name))
+      .map((t: any) => ({ name: t.name, description: t.description || '' }));
+
+    const availableAgents = allAgents
+      .filter((a: any) => settings.enabled_agents.includes(a.id))
+      .map((a: any) => ({ id: a.id, name: a.name, description: a.description || '' }));
+
+    const routingDecision = await agentClient.routeQuery(
       {
-        role: 'assistant',
-        content: responseContent,
-        run_id: runId || undefined,
-        routing_decision: routingDecision,
+        query: prompt,
+        available_tools: availableTools,
+        available_agents: availableAgents,
+        user_settings: {
+          temperature: settings.temperature,
+          max_tokens: settings.max_tokens,
+          model: modelOverride || settings.model,
+        },
       },
       token
     );
 
-    return NextResponse.json({
-      userMessage: {
-        id: userMessage.id,
-        conversation_id: conversation.id,
-        role: userMessage.role,
-        content: userMessage.content,
-        attachments: userMessage.attachments,
-        created_at: userMessage.created_at,
+    const agentId = routingDecision.selected_agents[0] || 'chat-assistant';
+    const run = await agentClient.createRun(
+      {
+        agent_id: agentId,
+        input: {
+          query: prompt,
+          selected_tools: routingDecision.selected_tools,
+        },
       },
-      assistantMessage: {
-        id: assistantMessage.id,
-        conversation_id: conversation.id,
-        role: assistantMessage.role,
-        content: assistantMessage.content,
-        run_id: runId,
-        routing_decision: routingDecision,
-        created_at: assistantMessage.created_at,
+      token
+    );
+
+    const stream = new ReadableStream<Uint8Array>({
+      async start(controller) {
+        const encoder = new TextEncoder();
+
+        try {
+          const sseRes = await agentClient.getRunStreamResponse(run.id, token);
+          const reader = sseRes.body?.getReader();
+          if (!reader) {
+            controller.enqueue(encoder.encode('❌ Error: No stream available.\n'));
+            controller.close();
+            return;
+          }
+
+          const decoder = new TextDecoder();
+          let buffer = '';
+          let finished = false;
+
+          while (!finished) {
+            const { value, done } = await reader.read();
+            if (done) break;
+            buffer += decoder.decode(value, { stream: true });
+
+            // SSE events are separated by a blank line
+            const parts = buffer.split('\n\n');
+            buffer = parts.pop() || '';
+
+            for (const rawEvent of parts) {
+              const lines = rawEvent.split('\n').map((l) => l.trim());
+              const eventLine = lines.find((l) => l.startsWith('event:'));
+              const dataLine = lines.find((l) => l.startsWith('data:'));
+              const eventType = eventLine ? eventLine.split(':', 2)[1].trim() : '';
+              const dataStr = dataLine ? dataLine.slice('data:'.length).trim() : '';
+
+              if (eventType === 'output' && dataStr) {
+                try {
+                  const data = JSON.parse(dataStr);
+                  const msg = typeof data?.message === 'string' ? data.message : JSON.stringify(data);
+                  controller.enqueue(encoder.encode(msg));
+                } catch {
+                  controller.enqueue(encoder.encode(dataStr));
+                }
+                finished = true;
+                break;
+              }
+
+              if (eventType === 'error' && dataStr) {
+                controller.enqueue(encoder.encode(`❌ Error: ${dataStr}`));
+                finished = true;
+                break;
+              }
+
+              if (eventType === 'complete') {
+                // If the run completes without an output payload, end cleanly.
+                finished = true;
+                break;
+              }
+            }
+          }
+        } catch (err: any) {
+          controller.enqueue(encoder.encode(`❌ Error: ${err?.message || 'Failed to stream response'}`));
+        } finally {
+          controller.close();
+        }
       },
-      conversation: {
-        id: conversation.id,
-        title: conversation.title,
-        created_at: conversation.created_at,
-        updated_at: conversation.updated_at,
+    });
+
+    return new Response(stream, {
+      headers: {
+        'Content-Type': 'text/plain; charset=utf-8',
+        'Cache-Control': 'no-cache, no-transform',
       },
-      runId, // For SSE streaming
-      requires_disambiguation: false,
     });
   } catch (error: any) {
     console.error('[API] Chat error:', error);
-    return NextResponse.json(
-      { error: error.message || 'Failed to process chat message' },
-      { status: error.statusCode || 500 }
-    );
+    return new Response(JSON.stringify({ error: error.message || 'Failed to process chat message' }), {
+      status: error.statusCode || 500,
+      headers: { 'Content-Type': 'application/json' },
+    });
   }
 }

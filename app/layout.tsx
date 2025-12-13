@@ -1,10 +1,9 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import React, { Suspense } from 'react';
 import "./globals.css";
-import { Header } from "@/components/layout/Header";
-import { Footer } from "@/components/layout/Footer";
-import { VersionBar } from "@/components/layout/VersionBar";
-import { FetchWrapper } from '@/components/FetchWrapper'
+import { Providers } from './providers';
+import { AppShell } from './app-shell';
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -27,16 +26,17 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   const basePath = process.env.NEXT_PUBLIC_BASE_PATH || "";
+
   return (
     <html lang="en">
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased bg-gray-50`}
       >
-        <FetchWrapper />
-        <Header basePath={basePath} />
-        <main className="min-h-screen">{children}</main>
-        <Footer />
-        <VersionBar version={process.env.NEXT_PUBLIC_VERSION} />
+        <Providers>
+          <Suspense fallback={null}>
+            <AppShell basePath={basePath}>{children}</AppShell>
+          </Suspense>
+        </Providers>
       </body>
     </html>
   );

@@ -319,7 +319,7 @@ export interface Model {
 }
 
 // ==========================================================================
-// CHAT TYPES (for busibox-ui)
+// CHAT TYPES (for busibox-app)
 // ==========================================================================
 
 export interface Message {

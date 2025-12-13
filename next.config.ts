@@ -5,11 +5,10 @@ const nextConfig: NextConfig = {
     // Ignore TypeScript errors in story files during build
     ignoreBuildErrors: false,
   },
+  cacheComponents: true,
   experimental: {
     // Ensure proper handling of ESM modules
     esmExternals: true,
-    // Enable Cache Components (Next.js 16.0.10)
-    cacheComponents: true,
   },
   // Exclude story files from being processed by Next.js
   pageExtensions: ['tsx', 'ts', 'jsx', 'js'].filter(ext => !ext.includes('stories')),

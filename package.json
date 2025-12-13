@@ -14,6 +14,7 @@
     "build-storybook": "storybook build"
   },
   "dependencies": {
+    "@jazzmind/busibox-app": "^1.0.3",
     "jose": "^6.1.2",
     "lucide-react": "^0.469.0",
     "next": "^16.0.10",
