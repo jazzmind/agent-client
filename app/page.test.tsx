@@ -1,20 +1,24 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render } from '@testing-library/react';
-import Home from './page';
+import { render, screen, waitFor } from '@testing-library/react';
+import DashboardPage from './page';
 
-const redirectMock = vi.fn();
-
-vi.mock('next/navigation', () => ({
-  redirect: (path: string) => redirectMock(path),
-}));
-
-describe('Home Page', () => {
+describe('Dashboard Page', () => {
   beforeEach(() => {
-    vi.clearAllMocks();
+    vi.restoreAllMocks();
   });
 
-  it('redirects to /agents', () => {
-    render(<Home />);
-    expect(redirectMock).toHaveBeenCalledWith('/agents');
+  it('renders dashboard and loads agents', async () => {
+    vi.spyOn(global, 'fetch').mockResolvedValueOnce({
+      ok: true,
+      json: async () => ([]),
+    } as any);
+
+    render(<DashboardPage />);
+
+    expect(screen.getByText('Agents')).toBeInTheDocument();
+
+    await waitFor(() => {
+      expect(global.fetch).toHaveBeenCalledWith('/api/agents');
+    });
   });
 });

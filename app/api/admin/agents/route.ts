@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getTokenFromRequest, getAuthHeaders } from '@/lib/auth-helper';
 
-const baseUrl = process.env.NEXT_PUBLIC_AGENT_API_URL || 'http://10.96.200.202:8000';
+const baseUrl = process.env.NEXT_PUBLIC_AGENT_API_URL || 'http://10.96.200.31:8000';
 
 // Create a new agent
 export async function POST(request: NextRequest) {

@@ -1,175 +1,171 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import Link from 'next/link';
-import ClientAuth from './components/ClientAuth';
-import AgentSelector from './components/AgentSelector';
-import ChatInterface from './components/ChatInterface';
-import SessionInfo from './components/SessionInfo';
+import { useEffect, useMemo, useState } from 'react';
+import type { Agent as AgentType } from '@/lib/types';
 
-interface ClientSession {
-  clientId: string;
-  clientSecret: string;
-  isAuthenticated: boolean;
-  accessToken?: string;
-  scopes?: string[];
-  selectedAgent?: string;
-}
+type Msg = { role: 'user' | 'assistant'; content: string };
 
-interface Agent {
-  id: string;
-  name: string;
-  displayName: string;
-  description: string;
-  scopes: string[];
-}
-
-export default function ClientSimulator() {
-  const [session, setSession] = useState<ClientSession>({
-    clientId: '',
-    clientSecret: '',
-    isAuthenticated: false
-  });
-  const [agents, setAgents] = useState<Agent[]>([]);
-  const [loading, setLoading] = useState(false);
+export default function SimulatorPage() {
+  const [agents, setAgents] = useState<AgentType[]>([]);
+  const [selectedAgentId, setSelectedAgentId] = useState<string>('');
+  const [messages, setMessages] = useState<Msg[]>([]);
+  const [input, setInput] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const handleAuthenticate = async (clientId: string, clientSecret: string) => {
-    setLoading(true);
+  useEffect(() => {
+    async function loadAgents() {
+      setError(null);
+      try {
+        const res = await fetch('/api/agents');
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.error || `Failed to load agents (${res.status})`);
+        const list = (Array.isArray(data) ? data : []) as AgentType[];
+        setAgents(
+          list.map((a) => ({
+            ...a,
+            is_builtin: Boolean((a as any).is_builtin),
+            is_personal: !Boolean((a as any).is_builtin),
+          }))
+        );
+      } catch (e: any) {
+        setError(e?.message || 'Failed to load agents');
+      }
+    }
+    loadAgents();
+  }, []);
+
+  const selectedAgent = useMemo(() => agents.find((a) => a.id === selectedAgentId) || null, [agents, selectedAgentId]);
+
+  const send = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedAgentId || !input.trim() || isLoading) return;
+
+    const content = input.trim();
+    setInput('');
+    setIsLoading(true);
     setError(null);
+    setMessages((prev) => [...prev, { role: 'user', content }, { role: 'assistant', content: '' }]);
 
     try {
-      // Test authentication by trying to get a token
-      const response = await fetch(`${process.env.NEXT_PUBLIC_BASE_PATH || ''}/api/simulator/authenticate`, {
+      const runRes = await fetch('/api/runs', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          clientId,
-          clientSecret,
+          agent_id: selectedAgentId,
+          input: { query: content },
         }),
       });
+      const run = await runRes.json().catch(() => ({}));
+      if (!runRes.ok) throw new Error(run.error || `Failed to start run (${runRes.status})`);
 
-      const data = await response.json();
+      // Stream output via SSE proxy (no headers required)
+      const es = new EventSource(`/api/streams/runs/${run.id}`);
+      let finalText = '';
 
-      if (!response.ok) {
-        throw new Error(data.error || 'Authentication failed');
-      }
-
-      // Fetch available agents for this client
-      const agentsResponse = await fetch(`${process.env.NEXT_PUBLIC_BASE_PATH || ''}/api/simulator/agents`, {
-        headers: {
-          'Authorization': `Bearer ${data.accessToken}`,
-        },
+      es.addEventListener('output', (evt: MessageEvent) => {
+        try {
+          const data = JSON.parse(String((evt as any).data));
+          finalText = typeof data?.message === 'string' ? data.message : JSON.stringify(data);
+        } catch {
+          finalText = String((evt as any).data);
+        }
+        setMessages((prev) => {
+          const next = [...prev];
+          const last = next[next.length - 1];
+          if (last?.role === 'assistant') last.content = finalText;
+          return next;
+        });
       });
 
-      const agentsData = await agentsResponse.json();
-
-      if (!agentsResponse.ok) {
-        throw new Error(agentsData.error || 'Failed to fetch agents');
-      }
-
-      setSession({
-        clientId,
-        clientSecret,
-        isAuthenticated: true,
-        accessToken: data.accessToken,
-        scopes: data.scopes || []
+      es.addEventListener('complete', () => {
+        es.close();
+        setIsLoading(false);
       });
 
-      setAgents(agentsData.agents || []);
-    } catch (error: any) {
-      setError(error.message);
-    } finally {
-      setLoading(false);
+      es.addEventListener('error', () => {
+        es.close();
+        setIsLoading(false);
+      });
+    } catch (e: any) {
+      setError(e?.message || 'Failed to run agent');
+      setIsLoading(false);
+      setMessages((prev) => {
+        const next = [...prev];
+        const last = next[next.length - 1];
+        if (last?.role === 'assistant') last.content = `❌ Error: ${e?.message || 'Failed to run agent'}`;
+        return next;
+      });
     }
   };
 
-  const handleSelectAgent = (agentId: string) => {
-    setSession(prev => ({
-      ...prev,
-      selectedAgent: agentId
-    }));
-  };
-
-  const handleDisconnect = () => {
-    setSession({
-      clientId: '',
-      clientSecret: '',
-      isAuthenticated: false
-    });
-    setAgents([]);
-    setError(null);
-  };
-
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-50 to-blue-100">
-      {/* Header */}
-      <header className="bg-white shadow-sm border-b">
-        <div className="max-w-6xl mx-auto px-4 py-6">
-          <div className="flex justify-between items-center">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900 flex items-center space-x-3">
-                <span className="text-3xl">🎭</span>
-                <span>Client Simulator</span>
-              </h1>
-              <p className="text-gray-600 mt-1">Test your agents by connecting as a client</p>
-            </div>
-            <div className="flex items-center space-x-4">
-              {session.isAuthenticated && (
-                <SessionInfo session={session} onDisconnect={handleDisconnect} />
-              )}
-              <Link
-                href="/admin"
-                className="bg-gray-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-gray-700 transition-colors"
-              >
-                Admin Panel
-              </Link>
-            </div>
-          </div>
+    <div className="max-w-5xl mx-auto px-4 py-8 space-y-6">
+      <div>
+        <h1 className="text-3xl font-bold text-gray-900">Simulator</h1>
+        <p className="text-gray-600 mt-1">Run an agent using your current user credentials.</p>
+      </div>
+
+      {error && <div className="p-4 bg-red-50 border border-red-200 rounded-lg text-red-700">{error}</div>}
+
+      <div className="bg-white border border-gray-200 rounded-lg p-4 flex items-center gap-3">
+        <label className="text-sm font-medium text-gray-700">Agent</label>
+        <select
+          value={selectedAgentId}
+          onChange={(e) => setSelectedAgentId(e.target.value)}
+          className="flex-1 px-3 py-2 border border-gray-300 rounded-lg"
+        >
+          <option value="">Select an agent…</option>
+          {agents.map((a) => (
+            <option key={a.id} value={a.id}>
+              {a.display_name || a.name} {a.is_builtin ? '(Built-in)' : '(Personal)'}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      {selectedAgent && (
+        <div className="bg-white border border-gray-200 rounded-lg p-4">
+          <div className="font-medium text-gray-900">{selectedAgent.display_name || selectedAgent.name}</div>
+          <div className="text-sm text-gray-600 mt-1">{selectedAgent.description || 'No description'}</div>
         </div>
-      </header>
+      )}
 
-      {/* Main Content */}
-      <div className="max-w-6xl mx-auto px-4 py-8">
-        {error && (
-          <div className="mb-6 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg flex items-center justify-between">
-            <div className="flex items-center space-x-2">
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              <span>{error}</span>
-            </div>
-            <button 
-              onClick={() => setError(null)}
-              className="text-red-500 hover:text-red-700"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-          </div>
-        )}
+      <div className="bg-white border border-gray-200 rounded-lg p-4">
+        <div className="space-y-3 max-h-[50vh] overflow-y-auto">
+          {messages.length === 0 ? (
+            <div className="text-gray-500 text-sm">No messages yet.</div>
+          ) : (
+            messages.map((m, idx) => (
+              <div key={idx} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                <div
+                  className={`max-w-[80%] rounded-lg px-4 py-3 text-sm ${
+                    m.role === 'user' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-900'
+                  }`}
+                >
+                  <div className="whitespace-pre-wrap">{m.content}</div>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
 
-        {!session.isAuthenticated ? (
-          <ClientAuth
-            onAuthenticate={handleAuthenticate}
-            loading={loading}
+        <form onSubmit={send} className="mt-4 flex gap-2">
+          <input
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            className="flex-1 px-3 py-2 border border-gray-300 rounded-lg"
+            placeholder={selectedAgentId ? 'Type a message…' : 'Select an agent first…'}
+            disabled={!selectedAgentId || isLoading}
           />
-        ) : !session.selectedAgent ? (
-          <AgentSelector
-            agents={agents}
-            onSelectAgent={handleSelectAgent}
-            session={session}
-          />
-        ) : (
-          <ChatInterface
-            session={session}
-            agents={agents}
-            onBackToAgents={() => handleSelectAgent('')}
-          />
-        )}
+          <button
+            type="submit"
+            disabled={!selectedAgentId || !input.trim() || isLoading}
+            className="px-5 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {isLoading ? 'Running…' : 'Send'}
+          </button>
+        </form>
       </div>
     </div>
   );

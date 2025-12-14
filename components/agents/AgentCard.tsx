@@ -74,7 +74,7 @@ export function AgentCard({ agent, onTest, onDelete, className = '' }: AgentCard
         {/* Actions */}
         <div className="flex items-center space-x-2 ml-4">
           <Link
-            href={`/agents/${agent.id}`}
+            href={`/agent/${agent.id}`}
             className="p-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
             title="View details"
           >
@@ -86,7 +86,7 @@ export function AgentCard({ agent, onTest, onDelete, className = '' }: AgentCard
 
           {!isBuiltin && (
             <Link
-              href={`/agents/${agent.id}/edit`}
+              href={`/agent/${agent.id}/edit`}
               className="p-2 text-gray-600 hover:text-green-600 hover:bg-green-50 rounded transition-colors"
               title="Edit agent"
             >
