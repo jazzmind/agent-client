@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server';
 import { getTokenFromRequest } from '@/lib/auth-helper';
 
-const AGENT_API_URL = process.env.NEXT_PUBLIC_AGENT_API_URL || 'http://10.96.200.31:8000';
+const AGENT_API_URL = process.env.NEXT_PUBLIC_AGENT_API_URL || 'http://10.96.200.202:8000';
 
 /**
  * GET /api/streams/runs/[id]

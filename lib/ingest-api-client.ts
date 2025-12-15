@@ -5,7 +5,7 @@
  * document processing, and RAG/semantic search.
  */
 
-const INGEST_API_URL = process.env.NEXT_PUBLIC_INGEST_API_URL || 'http://10.96.200.206:8001';
+const INGEST_API_URL = process.env.NEXT_PUBLIC_INGEST_API_URL || 'http://10.96.200.206:8002';
 
 // ==========================================================================
 // HELPER FUNCTIONS
