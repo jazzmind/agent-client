@@ -1,0 +1,158 @@
+# Agent Manager Setup Guide
+
+## Quick Start (Local Development)
+
+### 1. Get AuthZ Credentials
+
+Agent-manager needs to be registered with the authz service. You need:
+
+```bash
+AUTHZ_CLIENT_ID=agent-manager
+AUTHZ_CLIENT_SECRET=<secret-from-admin>
+```
+
+**How to get credentials:**
+- **Option A**: Contact the authz service administrator
+- **Option B**: Register via authz API (if you have admin access):
+  ```bash
+  curl -X POST http://10.96.200.210:8010/internal/clients \
+    -H "Content-Type: application/json" \
+    -d '{
+      "client_id": "agent-manager",
+      "client_secret": "<generate-secure-secret>",
+      "allowed_audiences": ["agent-api", "ingest-api", "search-api"]
+    }'
+  ```
+
+### 2. Configure Environment
+
+```bash
+# Copy the example file
+cp env.local.example .env.local
+
+# Edit .env.local and set:
+# - AUTHZ_CLIENT_SECRET (from step 1)
+# - Other values should work as-is for production LXC containers
+```
+
+### 3. Install and Run
+
+```bash
+# Install dependencies
+npm install
+
+# Start dev server
+npm run dev
+```
+
+The app will run on http://localhost:3001
+
+### 4. Test the Flow
+
+1. Go to ai-portal: http://10.96.200.201:3000
+2. Log in with your credentials
+3. Click "Agent Manager" app
+4. Should redirect to http://localhost:3001?token=...
+5. Token exchange happens automatically
+6. Agents should load
+
+## Troubleshooting
+
+### "AUTHZ_CLIENT_SECRET not configured"
+
+**Problem**: Missing environment variable
+
+**Solution**:
+```bash
+# Make sure .env.local exists and has:
+AUTHZ_CLIENT_SECRET=your-actual-secret
+```
+
+### "kid missing from token header"
+
+**Problem**: Token exchange is not happening
+
+**Solution**:
+1. Check browser console for errors
+2. Check terminal logs for token exchange errors
+3. Verify AUTHZ_CLIENT_SECRET is correct
+4. Test token exchange manually:
+   ```bash
+   curl -X POST http://10.96.200.210:8010/oauth/token \
+     -d "grant_type=urn:ietf:params:oauth:grant-type:token-exchange" \
+     -d "client_id=agent-manager" \
+     -d "client_secret=<your-secret>" \
+     -d "requested_subject=<user-id>" \
+     -d "audience=agent-api" \
+     -d "scope=agents:read agents:write"
+   ```
+
+### "Token exchange failed (401)"
+
+**Problem**: Invalid client credentials
+
+**Solution**:
+1. Verify AUTHZ_CLIENT_ID and AUTHZ_CLIENT_SECRET
+2. Check if agent-manager is registered with authz
+3. Check authz service logs
+
+### "Failed to load agents"
+
+**Problem**: Can't reach agent-server or authentication failed
+
+**Solution**:
+1. Check if agent-server is running: `curl http://10.96.200.202:8000/health`
+2. Check network access to LXC containers
+3. Check browser console and terminal logs
+4. Verify token exchange is working (see above)
+
+### Can't reach LXC containers (10.96.200.x)
+
+**Problem**: Network routing issue
+
+**Solution**:
+1. Verify you're on the correct network
+2. Check VPN connection if remote
+3. Test connectivity: `ping 10.96.200.202`
+4. Check firewall rules
+
+## Production Deployment
+
+See `docs/AUTHENTICATION.md` for complete deployment guide.
+
+**Key steps**:
+1. Register agent-manager with authz service
+2. Set environment variables in production
+3. Deploy to LXC container or subdomain
+4. Update ai-portal app configuration with production URL
+
+## Architecture
+
+```
+User → AI Portal (login) → SSO Token
+  ↓
+Agent Manager (this app)
+  ↓
+AuthZ Service (token exchange)
+  ↓
+Agent Server (API calls)
+```
+
+See `docs/AUTHENTICATION.md` for detailed architecture documentation.
+
+## Environment Variables Reference
+
+| Variable | Required | Default | Description |
+|----------|----------|---------|-------------|
+| `AUTHZ_BASE_URL` | No | `http://10.96.200.210:8010` | AuthZ service URL |
+| `AUTHZ_CLIENT_ID` | No | `agent-manager` | Client ID for authz |
+| `AUTHZ_CLIENT_SECRET` | **Yes** | - | Client secret (must be set!) |
+| `NEXT_PUBLIC_AI_PORTAL_URL` | No | `http://10.96.200.201:3000` | AI Portal URL for SSO |
+| `NEXT_PUBLIC_AGENT_API_URL` | No | `http://10.96.200.202:8000` | Agent Server URL |
+| `PORT` | No | `3001` | Local dev server port |
+
+## Next Steps
+
+- Read `docs/AUTHENTICATION.md` for architecture details
+- Check `env.local.example` for all configuration options
+- Review `docs/DEPLOYMENT-SUCCESS.md` for deployment guide
