@@ -99,7 +99,23 @@ export interface TokenExchangeResponse {
 async function handleResponse(response: Response) {
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({ detail: 'Unknown error' }));
-    throw new Error(errorData.detail || errorData.error || `HTTP error! status: ${response.status}`);
+    
+    // Handle various error formats
+    let errorMessage = `HTTP error! status: ${response.status}`;
+    
+    if (typeof errorData.detail === 'string') {
+      errorMessage = errorData.detail;
+    } else if (typeof errorData.error === 'string') {
+      errorMessage = errorData.error;
+    } else if (typeof errorData.message === 'string') {
+      errorMessage = errorData.message;
+    } else if (errorData.detail && typeof errorData.detail === 'object') {
+      errorMessage = JSON.stringify(errorData.detail);
+    } else if (errorData.error && typeof errorData.error === 'object') {
+      errorMessage = JSON.stringify(errorData.error);
+    }
+    
+    throw new Error(errorMessage);
   }
   return response.json();
 }

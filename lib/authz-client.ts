@@ -123,7 +123,7 @@ export async function getAgentApiToken(ssoToken: string): Promise<string> {
  * @returns Bearer token string for Authorization header
  */
 export async function getAgentApiTokenForTestUser(userId: string): Promise<string> {
-  const scope = ['agents:read', 'agents:write'].filter(Boolean).join(' ');
+  const scope = [].filter(Boolean).join(' ');
 
   const params = new URLSearchParams({
     grant_type: TOKEN_EXCHANGE_GRANT,
