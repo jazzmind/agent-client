@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import * as agentClient from '@/lib/agent-api-client';
-import { getTokenFromRequest } from '@/lib/auth-helper';
+import { requireAuthWithTokenExchange } from '@/lib/auth-middleware';
 
 /**
  * GET /api/models
@@ -8,14 +8,20 @@ import { getTokenFromRequest } from '@/lib/auth-helper';
  */
 export async function GET(request: NextRequest) {
   try {
-    const token = getTokenFromRequest(request);
-    const models = await agentClient.listModels(token);
+    // Authenticate and exchange token
+    const auth = await requireAuthWithTokenExchange(request);
+    if (auth instanceof NextResponse) {
+      return auth; // Return error response
+    }
+    
+    const models = await agentClient.listModels(auth.agentApiToken);
     return NextResponse.json(models);
   } catch (error: any) {
     console.error('[API] Failed to list models:', error);
+    const errorMessage = error instanceof Error ? error.message : String(error);
     return NextResponse.json(
-      { error: error.message || 'Failed to list models' },
-      { status: error.statusCode || 500 }
+      { error: errorMessage || 'Failed to list models' },
+      { status: 500 }
     );
   }
 }
