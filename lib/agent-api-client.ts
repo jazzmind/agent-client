@@ -255,7 +255,7 @@ export async function createEval(data: any, token?: string) {
 // ==========================================================================
 
 export async function listModels(token?: string) {
-  const response = await fetch(`${AGENT_API_URL}/agents/models`, {
+  const response = await fetch(`${AGENT_API_URL}/models`, {
     headers: getAgentApiHeaders(token),
   });
   return handleResponse(response);
