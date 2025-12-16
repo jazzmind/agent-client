@@ -1,32 +1,29 @@
+/**
+ * GET /api/auth/token
+ * 
+ * Returns the current user's auth token for use in client-side API calls.
+ * This is needed because httpOnly cookies can't be accessed from JavaScript.
+ */
+
 import { NextRequest, NextResponse } from 'next/server';
+import { getTokenFromRequest } from '@/lib/auth-helper';
 
-const baseUrl = process.env.MASTRA_API_URL || 'https://agent-sundai.vercel.app';
-
-export async function POST(request: NextRequest) {
+export async function GET(request: NextRequest) {
   try {
-    const body = await request.text();
+    const token = getTokenFromRequest(request);
     
-    const response = await fetch(`${baseUrl}/token`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-      },
-      body: body,
-    });
-    if (!response.ok) {
-      const errorData = await response.text();
+    if (!token) {
       return NextResponse.json(
-        { error: 'Token request failed', details: errorData },
-        { status: response.status }
+        { error: 'Not authenticated' },
+        { status: 401 }
       );
     }
 
-    const data = await response.json();
-    return NextResponse.json(data);
-  } catch (error: any) {
-    console.error('Token endpoint error:', error);
+    return NextResponse.json({ token });
+  } catch (error) {
+    console.error('[Auth Token] Error:', error);
     return NextResponse.json(
-      { error: 'Internal server error', details: error.message },
+      { error: 'Failed to get token' },
       { status: 500 }
     );
   }

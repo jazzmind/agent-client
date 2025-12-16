@@ -37,13 +37,21 @@ export default function DashboardPage() {
           throw new Error(data.error || `Failed to load agents (${res.status})`);
         }
         const data = (await res.json()) as Agent[];
+        console.log('[Dashboard] Loaded agents:', data.length, 'agents');
+        console.log('[Dashboard] Sample agent:', data[0]);
+        
         const normalized = (Array.isArray(data) ? data : []).map((a) => ({
           ...a,
-          is_builtin: Boolean((a as any).is_builtin),
-          is_personal: !Boolean((a as any).is_builtin),
+          is_builtin: Boolean(a.is_builtin),
+          is_personal: !Boolean(a.is_builtin),
         }));
+        
+        console.log('[Dashboard] Built-in agents:', normalized.filter(a => a.is_builtin).length);
+        console.log('[Dashboard] Personal agents:', normalized.filter(a => a.is_personal).length);
+        
         setAgents(normalized);
       } catch (e: any) {
+        console.error('[Dashboard] Failed to load agents:', e);
         setError(e?.message || 'Failed to load agents');
       } finally {
         setLoading(false);
