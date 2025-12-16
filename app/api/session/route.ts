@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getTokenFromRequest, getUserRolesFromToken, parseJWTPayload, getUserIdFromToken } from '@/lib/auth-helper';
+import { getTokenFromRequest, getUserRolesFromToken, parseJWTPayload, getUserIdFromToken, isTokenExpired } from '@/lib/auth-helper';
 
 /**
  * GET /api/session
@@ -13,7 +13,18 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ user: null, isAuthenticated: false });
   }
 
-  const payload = parseJWTPayload(token) || {};
+  // Check if token is expired
+  if (isTokenExpired(token)) {
+    console.warn('[SESSION] Token is expired');
+    return NextResponse.json({ user: null, isAuthenticated: false });
+  }
+
+  const payload = parseJWTPayload(token);
+  if (!payload) {
+    console.warn('[SESSION] Failed to parse JWT payload');
+    return NextResponse.json({ user: null, isAuthenticated: false });
+  }
+
   const roles = getUserRolesFromToken(token);
   const userId = getUserIdFromToken(token) || payload.sub || payload.user_id || payload.userId || null;
 

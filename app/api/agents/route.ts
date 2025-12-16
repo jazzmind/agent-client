@@ -14,8 +14,9 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(agents);
   } catch (error: any) {
     console.error('[API] Failed to list agents:', error);
+    const errorMessage = error instanceof Error ? error.message : String(error);
     return NextResponse.json(
-      { error: error.message || 'Failed to list agents' },
+      { error: errorMessage || 'Failed to list agents' },
       { status: error.statusCode || 500 }
     );
   }

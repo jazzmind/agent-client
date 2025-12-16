@@ -4,10 +4,11 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { FetchWrapper, Footer, Header, VersionBar } from '@jazzmind/busibox-app';
 import type { SessionData } from '@jazzmind/busibox-app';
+import { TokenExchange } from '@/components/auth/TokenExchange';
 
 export function AppShell({ children, basePath }: { children: React.ReactNode; basePath: string }) {
   const [session, setSession] = useState<SessionData>({ user: null, isAuthenticated: false });
-  const portalUrl = process.env.NEXT_PUBLIC_AI_PORTAL_URL || '/home';
+  const portalUrl = process.env.NEXT_PUBLIC_AI_PORTAL_URL ? `${process.env.NEXT_PUBLIC_AI_PORTAL_URL}/portal/home` : '/portal/home';
 
   const onLogout = useCallback(async () => {
     try {
@@ -41,12 +42,13 @@ export function AppShell({ children, basePath }: { children: React.ReactNode; ba
 
   return (
     <>
+      <TokenExchange />
       <FetchWrapper />
       <Header
         session={session}
         onLogout={onLogout}
         appsLink={portalUrl}
-        accountLink={`${portalUrl.replace(/\/+$/, '')}/account`}
+        accountLink={`${process.env.NEXT_PUBLIC_AI_PORTAL_URL || ''}/portal/account`}
         adminNavigation={[
           { href: `${basePath}/admin`, label: 'Admin Dashboard' },
           { href: `${basePath}/simulator`, label: 'Simulator' },
