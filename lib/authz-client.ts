@@ -112,3 +112,46 @@ export async function getAgentApiToken(ssoToken: string): Promise<string> {
   const result = await exchangeForAuthzToken(ssoToken, 'agent-api', ['agents:read', 'agents:write']);
   return result.accessToken;
 }
+
+/**
+ * Get an authz token for test user (local development only)
+ * 
+ * This bypasses the SSO token exchange and directly requests a token
+ * for a test user. Only works when TEST_USER_ID is configured.
+ * 
+ * @param userId - Test user ID
+ * @returns Bearer token string for Authorization header
+ */
+export async function getAgentApiTokenForTestUser(userId: string): Promise<string> {
+  const scope = ['agents:read', 'agents:write'].filter(Boolean).join(' ');
+
+  const params = new URLSearchParams({
+    grant_type: TOKEN_EXCHANGE_GRANT,
+    client_id: getAuthzClientId(),
+    client_secret: getAuthzClientSecret(),
+    audience: 'agent-api',
+    scope,
+    requested_subject: userId,
+    requested_purpose: 'agent-manager-test',
+  });
+
+  const response = await fetch(`${getAuthzBaseUrl()}/oauth/token`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: params.toString(),
+  });
+
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(`Authz token exchange failed for test user (${response.status}): ${text}`);
+  }
+
+  const data = (await response.json()) as {
+    access_token: string;
+    token_type: 'bearer';
+    expires_in: number;
+    scope?: string;
+  };
+
+  return data.access_token;
+}

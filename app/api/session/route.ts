@@ -6,10 +6,29 @@ import { getTokenFromRequest, getUserRolesFromToken, parseJWTPayload, getUserIdF
  *
  * Lightweight session endpoint for UI chrome (navbar/user dropdown).
  * Derives user identity from the existing JWT (cookie or Authorization header).
+ * Falls back to TEST_USER credentials if configured (local dev).
  */
 export async function GET(request: NextRequest) {
   const token = getTokenFromRequest(request);
+  
+  // If no token, check for test user (local dev)
   if (!token) {
+    const testUserId = process.env.TEST_USER_ID;
+    const testUserEmail = process.env.TEST_USER_EMAIL;
+    
+    if (testUserId && testUserEmail) {
+      console.log('[SESSION] Using test user credentials for local development');
+      return NextResponse.json({
+        user: {
+          id: testUserId,
+          email: testUserEmail,
+          status: 'ACTIVE',
+          roles: ['Admin', 'User'], // Test user has all roles
+        },
+        isAuthenticated: true,
+      });
+    }
+    
     return NextResponse.json({ user: null, isAuthenticated: false });
   }
 

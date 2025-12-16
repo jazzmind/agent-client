@@ -49,12 +49,44 @@ The app will run on http://localhost:3001
 
 ### 4. Test the Flow
 
+**Option A: Direct Testing (Recommended for Development)**
+
+With `TEST_USER_ID` and `TEST_USER_EMAIL` configured in `.env.local`:
+
+1. Go directly to http://localhost:3001
+2. Will automatically authenticate as test user
+3. No SSO flow needed
+4. Agents should load immediately
+
+**Option B: Full SSO Flow Testing**
+
 1. Go to ai-portal: http://10.96.200.201:3000
 2. Log in with your credentials
 3. Click "Agent Manager" app
 4. Should redirect to http://localhost:3001?token=...
 5. Token exchange happens automatically
 6. Agents should load
+
+## Test User Credentials
+
+For local development, you can bypass the SSO flow entirely by using test user credentials:
+
+```bash
+# In .env.local
+TEST_USER_ID=696ca76f-5e94-43d6-a628-2e5104fc6ba9
+TEST_USER_EMAIL=test@busibox.local
+```
+
+**How it works:**
+1. When no SSO token is present, the middleware checks for `TEST_USER_ID`
+2. If found, it directly requests an authz token for that user
+3. Bypasses the entire ai-portal SSO flow
+4. Perfect for rapid local development and testing
+
+**Security:**
+- Only works in development (never set in production)
+- Test user must exist in authz service
+- Test user should have appropriate roles/permissions
 
 ## Troubleshooting
 
