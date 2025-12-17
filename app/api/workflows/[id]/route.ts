@@ -12,7 +12,8 @@ export async function GET(
 ) {
   try {
     const auth = await requireAuthWithTokenExchange(request);
-    const workflow = await agentClient.getWorkflow(params.id, auth.token);
+    if (auth instanceof NextResponse) return auth; // Auth failed, return error response
+    const workflow = await agentClient.getWorkflow(params.id, auth.agentApiToken);
     return NextResponse.json(workflow);
   } catch (error: any) {
     console.error('[API] Failed to get workflow:', error);
@@ -33,9 +34,10 @@ export async function PUT(
 ) {
   try {
     const auth = await requireAuthWithTokenExchange(request);
+    if (auth instanceof NextResponse) return auth; // Auth failed, return error response
     const body = await request.json();
     
-    const workflow = await agentClient.updateWorkflow(params.id, body, auth.token);
+    const workflow = await agentClient.updateWorkflow(params.id, body, auth.agentApiToken);
     return NextResponse.json(workflow);
   } catch (error: any) {
     console.error('[API] Failed to update workflow:', error);
@@ -56,7 +58,8 @@ export async function DELETE(
 ) {
   try {
     const auth = await requireAuthWithTokenExchange(request);
-    await agentClient.deleteWorkflow(params.id, auth.token);
+    if (auth instanceof NextResponse) return auth; // Auth failed, return error response
+    await agentClient.deleteWorkflow(params.id, auth.agentApiToken);
     return NextResponse.json({ success: true }, { status: 204 });
   } catch (error: any) {
     console.error('[API] Failed to delete workflow:', error);
