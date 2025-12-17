@@ -28,9 +28,9 @@ export default function RootLayout({
   const basePath = process.env.NEXT_PUBLIC_BASE_PATH || "";
 
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased bg-gray-50`}
+        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <Providers>
           <Suspense fallback={null}>

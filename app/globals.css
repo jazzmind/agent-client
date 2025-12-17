@@ -12,8 +12,15 @@
   --font-mono: var(--font-geist-mono);
 }
 
+/* Dark mode via class (for theme toggle) */
+.dark {
+  --background: #0a0a0a;
+  --foreground: #ededed;
+}
+
+/* Dark mode via system preference (fallback) */
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not(.light) {
     --background: #0a0a0a;
     --foreground: #ededed;
   }
