@@ -28,7 +28,8 @@ export default function NewAgentPage() {
       try {
         const res = await fetch('/api/models');
         const data = await res.json();
-        const list = Array.isArray(data) ? data : data.models || [];
+        // Handle OpenAI-compatible format: { data: [...], object: "list" }
+        const list = Array.isArray(data) ? data : (data.data || data.models || []);
         setModels(list);
         if (list.length > 0) {
           setForm((prev) => ({ ...prev, model: prev.model || String(list[0].id) }));
