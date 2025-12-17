@@ -3,7 +3,7 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import Link from 'next/link';
 import { useParams, useSearchParams } from 'next/navigation';
-import { FullChatInterface } from '@jazzmind/busibox-app/components';
+import { SimpleChatInterface } from '@jazzmind/busibox-app/components';
 import type { Agent } from '@/lib/types';
 
 export default function AgentDetailPage() {
@@ -207,17 +207,16 @@ export default function AgentDetailPage() {
 
           {activeTab === 'chat' && token && (
             <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden" style={{ height: '800px' }}>
-              <FullChatInterface
+              <SimpleChatInterface
                 token={token}
                 agentUrl={process.env.NEXT_PUBLIC_AGENT_API_URL}
-                showInsights={false}
-                allowConversationManagement={false}
-                availableTools={agent.tools?.names?.map((name: string) => ({
-                  id: name,
-                  name: name === 'search' ? 'Web Search' : name === 'rag' ? 'Document Search' : name === 'ingest' ? 'Document Ingestion' : name,
-                  description: name === 'search' ? 'Search the internet' : name === 'rag' ? 'Search documents' : name === 'ingest' ? 'Process documents' : '',
-                  enabled: true,
-                })) || []}
+                agentId={agent.id}
+                model={agent.model}
+                enableWebSearch={enableWebSearch}
+                enableDocSearch={enableDocSearch}
+                allowAttachments={supportsAttachments}
+                placeholder={`Chat with ${agent.display_name || agent.name}...`}
+                welcomeMessage={`Hi! I'm **${agent.display_name || agent.name}**.\n\n${agent.description || 'How can I help you today?'}`}
               />
             </div>
           )}
