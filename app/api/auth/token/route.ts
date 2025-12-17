@@ -1,25 +1,26 @@
 /**
  * GET /api/auth/token
  * 
- * Returns the current user's auth token for use in client-side API calls.
+ * Returns the current user's agent-api auth token for use in client-side API calls.
+ * This exchanges the SSO token for an authz token that agent-server accepts.
  * This is needed because httpOnly cookies can't be accessed from JavaScript.
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getTokenFromRequest } from '@/lib/auth-helper';
+import { requireAuthWithTokenExchange } from '@/lib/auth-middleware';
 
 export async function GET(request: NextRequest) {
   try {
-    const token = getTokenFromRequest(request);
+    // Authenticate and exchange token
+    const auth = await requireAuthWithTokenExchange(request);
     
-    if (!token) {
-      return NextResponse.json(
-        { error: 'Not authenticated' },
-        { status: 401 }
-      );
+    // Check if it's an error response
+    if (auth instanceof NextResponse) {
+      return auth; // Return the error response
     }
 
-    return NextResponse.json({ token });
+    // Return the agent-api token (authz token)
+    return NextResponse.json({ token: auth.agentApiToken });
   } catch (error) {
     console.error('[Auth Token] Error:', error);
     return NextResponse.json(

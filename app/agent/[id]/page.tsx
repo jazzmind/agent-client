@@ -11,13 +11,14 @@ export default function AgentDetailPage() {
   const searchParams = useSearchParams();
   const agentId = params.id;
   const chatParam = searchParams.get('chat');
-  const tabParam = searchParams.get('tab') || 'details';
+  const tabParam = searchParams.get('tab');
 
   const [agent, setAgent] = useState<Agent | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [token, setToken] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'details' | 'chat' | 'workflow'>(tabParam as any || 'details');
+  const [tokenError, setTokenError] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<'details' | 'chat' | 'workflow'>('details');
 
   // Determine if agent supports attachments
   const supportsAttachments = useMemo(() => {
@@ -54,6 +55,11 @@ export default function AgentDetailPage() {
         if (tokenRes.ok) {
           const tokenData = await tokenRes.json();
           setToken(tokenData.token);
+          setTokenError(null);
+        } else if (tokenRes.status === 401) {
+          setTokenError('not_authenticated');
+        } else {
+          setTokenError('token_fetch_failed');
         }
       } catch (e: any) {
         setError(e?.message || 'Failed to load agent');
@@ -64,12 +70,16 @@ export default function AgentDetailPage() {
     if (agentId) load();
   }, [agentId]);
 
-  // Auto-show chat if chat param is true
+  // Sync activeTab with URL params
   useEffect(() => {
-    if (chatParam === 'true' && token) {
+    if (chatParam === 'true') {
       setActiveTab('chat');
+    } else if (tabParam) {
+      setActiveTab(tabParam as any);
+    } else {
+      setActiveTab('details');
     }
-  }, [chatParam, token]);
+  }, [chatParam, tabParam]);
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-8 space-y-6">
@@ -117,18 +127,16 @@ export default function AgentDetailPage() {
               >
                 Details
               </button>
-              {token && (
-                <button
-                  onClick={() => setActiveTab('chat')}
-                  className={`py-4 px-1 border-b-2 font-medium text-sm ${
-                    activeTab === 'chat'
-                      ? 'border-blue-500 text-blue-600 dark:text-blue-400'
-                      : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:border-gray-300 dark:hover:border-gray-600'
-                  }`}
-                >
-                  Chat
-                </button>
-              )}
+              <button
+                onClick={() => setActiveTab('chat')}
+                className={`py-4 px-1 border-b-2 font-medium text-sm ${
+                  activeTab === 'chat'
+                    ? 'border-blue-500 text-blue-600 dark:text-blue-400'
+                    : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:border-gray-300 dark:hover:border-gray-600'
+                }`}
+              >
+                Chat
+              </button>
               {agent.workflow && (
                 <button
                   onClick={() => setActiveTab('workflow')}
@@ -205,19 +213,64 @@ export default function AgentDetailPage() {
             </div>
           )}
 
-          {activeTab === 'chat' && token && (
+          {activeTab === 'chat' && (
             <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden" style={{ height: '800px' }}>
-              <SimpleChatInterface
-                token={token}
-                agentUrl={process.env.NEXT_PUBLIC_AGENT_API_URL}
-                agentId={agent.id}
-                model={agent.model}
-                enableWebSearch={enableWebSearch}
-                enableDocSearch={enableDocSearch}
-                allowAttachments={supportsAttachments}
-                placeholder={`Chat with ${agent.display_name || agent.name}...`}
-                welcomeMessage={`Hi! I'm **${agent.display_name || agent.name}**.\n\n${agent.description || 'How can I help you today?'}`}
-              />
+              {tokenError === 'not_authenticated' ? (
+                <div className="flex items-center justify-center h-full">
+                  <div className="text-center max-w-md px-6">
+                    <div className="text-6xl mb-4">🔒</div>
+                    <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-2">
+                      Authentication Required
+                    </h3>
+                    <p className="text-gray-600 dark:text-gray-400 mb-4">
+                      You need to be authenticated to use the chat feature. Please log in through the AI Portal first.
+                    </p>
+                    <a
+                      href={process.env.NEXT_PUBLIC_AI_PORTAL_URL || 'http://localhost:3000'}
+                      className="inline-block px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
+                    >
+                      Go to AI Portal
+                    </a>
+                  </div>
+                </div>
+              ) : tokenError === 'token_fetch_failed' ? (
+                <div className="flex items-center justify-center h-full">
+                  <div className="text-center max-w-md px-6">
+                    <div className="text-6xl mb-4">⚠️</div>
+                    <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-2">
+                      Unable to Load Chat
+                    </h3>
+                    <p className="text-gray-600 dark:text-gray-400 mb-4">
+                      Failed to retrieve authentication token. Please try refreshing the page.
+                    </p>
+                    <button
+                      onClick={() => window.location.reload()}
+                      className="inline-block px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
+                    >
+                      Refresh Page
+                    </button>
+                  </div>
+                </div>
+              ) : !token ? (
+                <div className="flex items-center justify-center h-full">
+                  <div className="text-center">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                    <p className="text-gray-600 dark:text-gray-400">Loading chat...</p>
+                  </div>
+                </div>
+              ) : (
+                <SimpleChatInterface
+                  token={token}
+                  agentUrl={process.env.NEXT_PUBLIC_AGENT_API_URL}
+                  agentId={agent.id}
+                  model={agent.model}
+                  enableWebSearch={enableWebSearch}
+                  enableDocSearch={enableDocSearch}
+                  allowAttachments={supportsAttachments}
+                  placeholder={`Chat with ${agent.display_name || agent.name}...`}
+                  welcomeMessage={`Hi! I'm **${agent.display_name || agent.name}**.\n\n${agent.description || 'How can I help you today?'}`}
+                />
+              )}
             </div>
           )}
 

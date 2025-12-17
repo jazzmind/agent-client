@@ -627,3 +627,57 @@ export async function getRunStreamResponse(runId: string, token?: string): Promi
   
   return response;
 }
+
+// ==========================================================================
+// WORKFLOW EXECUTION METHODS
+// ==========================================================================
+
+/**
+ * Get workflow execution details
+ */
+export async function getWorkflowExecution(executionId: string, token?: string): Promise<any> {
+  return fetchWithAuth(`/agents/workflows/executions/${executionId}`, { method: 'GET' }, token);
+}
+
+/**
+ * Get step executions for a workflow execution
+ */
+export async function getWorkflowExecutionSteps(executionId: string, token?: string): Promise<any[]> {
+  return fetchWithAuth(`/agents/workflows/executions/${executionId}/steps`, { method: 'GET' }, token);
+}
+
+/**
+ * Execute a workflow
+ */
+export async function executeWorkflow(
+  workflowId: string,
+  inputData?: any,
+  guardrails?: any,
+  token?: string
+): Promise<any> {
+  return fetchWithAuth(
+    `/agents/workflows/${workflowId}/execute`,
+    {
+      method: 'POST',
+      body: JSON.stringify({ input_data: inputData, guardrails }),
+    },
+    token
+  );
+}
+
+/**
+ * List executions for a workflow
+ */
+export async function listWorkflowExecutions(
+  workflowId: string,
+  options?: { limit?: number; offset?: number; status?: string },
+  token?: string
+): Promise<any[]> {
+  const params = new URLSearchParams();
+  if (options?.limit) params.append('limit', options.limit.toString());
+  if (options?.offset) params.append('offset', options.offset.toString());
+  if (options?.status) params.append('status', options.status);
+  
+  const url = `/agents/workflows/${workflowId}/executions${params.toString() ? '?' + params.toString() : ''}`;
+  return fetchWithAuth(url, { method: 'GET' }, token);
+}
