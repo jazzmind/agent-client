@@ -3,8 +3,16 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { ToolSelector, Tool } from '@jazzmind/busibox-app/components';
 
 type ModelOption = { id: string; name: string; provider?: string };
+
+// Available tools from agent-server TOOL_REGISTRY
+const AVAILABLE_TOOLS: Tool[] = [
+  { id: 'search', name: 'Web Search', description: 'Search the internet', icon: '🌐', enabled: true },
+  { id: 'rag', name: 'Document Search', description: 'Search documents', icon: '📄', enabled: true },
+  { id: 'ingest', name: 'Document Ingestion', description: 'Process documents', icon: '📥', enabled: true },
+];
 
 export default function NewAgentPage() {
   const router = useRouter();
@@ -20,6 +28,7 @@ export default function NewAgentPage() {
     model: '',
     instructions: '',
     is_active: true,
+    tools: [] as string[],
   });
 
   useEffect(() => {
@@ -63,6 +72,7 @@ export default function NewAgentPage() {
           model: form.model,
           instructions: form.instructions,
           is_active: form.is_active,
+          tools: form.tools.length > 0 ? { names: form.tools } : undefined,
         }),
       });
       const data = await res.json().catch(() => ({}));
@@ -158,6 +168,16 @@ export default function NewAgentPage() {
             className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 min-h-[180px]"
             placeholder="System prompt / instructions for the agent…"
           />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Tools</label>
+          <ToolSelector
+            selectedTools={form.tools}
+            onToolsChange={(tools) => setForm((p) => ({ ...p, tools }))}
+            availableTools={AVAILABLE_TOOLS}
+          />
+          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Select tools this agent can use.</p>
         </div>
 
         <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">

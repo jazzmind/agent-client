@@ -59,6 +59,9 @@ export function AppShell({ children, basePath }: { children: React.ReactNode; ba
           <Link href="/" className="text-sm font-medium text-gray-900 dark:text-gray-100 hover:text-blue-600 dark:hover:text-blue-400">
             Dashboard
           </Link>
+          <Link href="/workflows" className="text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400">
+            Workflows
+          </Link>
           <Link href="/admin" className="text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400">
             Admin
           </Link>

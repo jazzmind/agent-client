@@ -230,6 +230,33 @@ export async function createWorkflow(data: any, token?: string) {
   return handleResponse(response);
 }
 
+export async function getWorkflow(id: string, token?: string) {
+  const response = await fetch(`${AGENT_API_URL}/agents/workflows/${id}`, {
+    headers: getAgentApiHeaders(token),
+  });
+  return handleResponse(response);
+}
+
+export async function updateWorkflow(id: string, data: any, token?: string) {
+  const response = await fetch(`${AGENT_API_URL}/agents/workflows/${id}`, {
+    method: 'PUT',
+    headers: getAgentApiHeaders(token),
+    body: JSON.stringify(data),
+  });
+  return handleResponse(response);
+}
+
+export async function deleteWorkflow(id: string, token?: string) {
+  const response = await fetch(`${AGENT_API_URL}/agents/workflows/${id}`, {
+    method: 'DELETE',
+    headers: getAgentApiHeaders(token),
+  });
+  if (response.status === 204) {
+    return { success: true };
+  }
+  return handleResponse(response);
+}
+
 // ==========================================================================
 // EVALUATIONS
 // ==========================================================================

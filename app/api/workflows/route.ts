@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import * as agentClient from '@/lib/agent-api-client';
-import { getTokenFromRequest } from '@/lib/auth-helper';
+import { requireAuthWithTokenExchange } from '@/lib/auth-middleware';
 
 /**
  * GET /api/workflows
@@ -8,8 +8,8 @@ import { getTokenFromRequest } from '@/lib/auth-helper';
  */
 export async function GET(request: NextRequest) {
   try {
-    const token = getTokenFromRequest(request);
-    const workflows = await agentClient.listWorkflows(token);
+    const auth = await requireAuthWithTokenExchange(request);
+    const workflows = await agentClient.listWorkflows(auth.token);
     return NextResponse.json(workflows);
   } catch (error: any) {
     console.error('[API] Failed to list workflows:', error);
@@ -26,10 +26,10 @@ export async function GET(request: NextRequest) {
  */
 export async function POST(request: NextRequest) {
   try {
-    const token = getTokenFromRequest(request);
+    const auth = await requireAuthWithTokenExchange(request);
     const body = await request.json();
     
-    const workflow = await agentClient.createWorkflow(body, token);
+    const workflow = await agentClient.createWorkflow(body, auth.token);
     return NextResponse.json(workflow, { status: 201 });
   } catch (error: any) {
     console.error('[API] Failed to create workflow:', error);
