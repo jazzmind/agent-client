@@ -7,6 +7,9 @@
   --font-mono: var(--font-geist-mono);
 }
 
+/* Configure dark mode to use class strategy */
+@variant dark (&:where(.dark, .dark *));
+
 :root {
   --background: #ffffff;
   --foreground: #171717;
@@ -18,9 +21,9 @@
   --foreground: #ededed;
 }
 
-/* Dark mode via system preference (fallback) */
+/* Dark mode via system preference (only when no explicit theme class is set) */
 @media (prefers-color-scheme: dark) {
-  :root:not(.light) {
+  :root:not(.light):not(.dark) {
     --background: #0a0a0a;
     --foreground: #ededed;
   }
