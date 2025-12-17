@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import * as agentClient from '@/lib/agent-api-client';
-import { getTokenFromRequest } from '@/lib/auth-helper';
+import { requireAuthWithTokenExchange } from '@/lib/auth-middleware';
 
 /**
  * GET /api/agents/[id]
@@ -12,11 +12,16 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
-    const token = getTokenFromRequest(request);
+    
+    // Authenticate and exchange token
+    const auth = await requireAuthWithTokenExchange(request);
+    if (auth instanceof NextResponse) {
+      return auth; // Return error response
+    }
     
     // Note: agent-server doesn't have individual GET endpoint yet
     // So we list all and filter (or this will be added in agent-server-requirements.md)
-    const agents = await agentClient.listAgents(token);
+    const agents = await agentClient.listAgents(auth.agentApiToken);
     const agent = agents.find((a: any) => a.id === id);
     
     if (!agent) {
