@@ -102,18 +102,18 @@ export default function SimulatorPage() {
   return (
     <div className="max-w-5xl mx-auto px-4 py-8 space-y-6">
       <div>
-        <h1 className="text-3xl font-bold text-gray-900">Simulator</h1>
-        <p className="text-gray-600 mt-1">Run an agent using your current user credentials.</p>
+        <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">Simulator</h1>
+        <p className="text-gray-600 dark:text-gray-400 mt-1">Run an agent using your current user credentials.</p>
       </div>
 
-      {error && <div className="p-4 bg-red-50 border border-red-200 rounded-lg text-red-700">{error}</div>}
+      {error && <div className="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg text-red-700 dark:text-red-400">{error}</div>}
 
-      <div className="bg-white border border-gray-200 rounded-lg p-4 flex items-center gap-3">
-        <label className="text-sm font-medium text-gray-700">Agent</label>
+      <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4 flex items-center gap-3">
+        <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Agent</label>
         <select
           value={selectedAgentId}
           onChange={(e) => setSelectedAgentId(e.target.value)}
-          className="flex-1 px-3 py-2 border border-gray-300 rounded-lg"
+          className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100"
         >
           <option value="">Select an agent…</option>
           {agents.map((a) => (
@@ -125,22 +125,22 @@ export default function SimulatorPage() {
       </div>
 
       {selectedAgent && (
-        <div className="bg-white border border-gray-200 rounded-lg p-4">
-          <div className="font-medium text-gray-900">{selectedAgent.display_name || selectedAgent.name}</div>
-          <div className="text-sm text-gray-600 mt-1">{selectedAgent.description || 'No description'}</div>
+        <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+          <div className="font-medium text-gray-900 dark:text-gray-100">{selectedAgent.display_name || selectedAgent.name}</div>
+          <div className="text-sm text-gray-600 dark:text-gray-400 mt-1">{selectedAgent.description || 'No description'}</div>
         </div>
       )}
 
-      <div className="bg-white border border-gray-200 rounded-lg p-4">
+      <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4">
         <div className="space-y-3 max-h-[50vh] overflow-y-auto">
           {messages.length === 0 ? (
-            <div className="text-gray-500 text-sm">No messages yet.</div>
+            <div className="text-gray-500 dark:text-gray-400 text-sm">No messages yet.</div>
           ) : (
             messages.map((m, idx) => (
               <div key={idx} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                 <div
                   className={`max-w-[80%] rounded-lg px-4 py-3 text-sm ${
-                    m.role === 'user' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-900'
+                    m.role === 'user' ? 'bg-blue-600 text-white' : 'bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-gray-100'
                   }`}
                 >
                   <div className="whitespace-pre-wrap">{m.content}</div>
@@ -154,14 +154,14 @@ export default function SimulatorPage() {
           <input
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            className="flex-1 px-3 py-2 border border-gray-300 rounded-lg"
+            className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100"
             placeholder={selectedAgentId ? 'Type a message…' : 'Select an agent first…'}
             disabled={!selectedAgentId || isLoading}
           />
           <button
             type="submit"
             disabled={!selectedAgentId || !input.trim() || isLoading}
-            className="px-5 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-5 py-2 rounded-lg bg-blue-600 dark:bg-blue-700 text-white hover:bg-blue-700 dark:hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isLoading ? 'Running…' : 'Send'}
           </button>

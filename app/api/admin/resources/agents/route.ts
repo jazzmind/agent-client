@@ -1,28 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
 import * as agentClient from '@/lib/agent-api-client';
-
-// Get user token from request (assuming it's in cookies or headers)
-function getTokenFromRequest(request: NextRequest): string | undefined {
-  // Check Authorization header
-  const authHeader = request.headers.get('authorization');
-  if (authHeader?.startsWith('Bearer ')) {
-    return authHeader.substring(7);
-  }
-  
-  // Check cookie (if using httpOnly cookies)
-  const tokenCookie = request.cookies.get('auth_token');
-  if (tokenCookie) {
-    return tokenCookie.value;
-  }
-  
-  return undefined;
-}
+import { requireAuthWithTokenExchange } from '@/lib/auth-middleware';
 
 // List all agents
 export async function GET(request: NextRequest) {
   try {
-    const token = getTokenFromRequest(request);
-    const agents = await agentClient.listAgents(token);
+    // Authenticate and exchange token
+    const auth = await requireAuthWithTokenExchange(request);
+    if (auth instanceof NextResponse) {
+      return auth; // Return error response
+    }
+    
+    const agents = await agentClient.listAgents(auth.agentApiToken);
     return NextResponse.json(agents);
   } catch (error: any) {
     console.error('Failed to fetch agents:', error);
@@ -36,10 +25,14 @@ export async function GET(request: NextRequest) {
 // Create a new agent
 export async function POST(request: NextRequest) {
   try {
-    const token = getTokenFromRequest(request);
-    const body = await request.json();
+    // Authenticate and exchange token
+    const auth = await requireAuthWithTokenExchange(request);
+    if (auth instanceof NextResponse) {
+      return auth; // Return error response
+    }
     
-    const agent = await agentClient.createAgentDefinition(body, token);
+    const body = await request.json();
+    const agent = await agentClient.createAgentDefinition(body, auth.agentApiToken);
     return NextResponse.json(agent, { status: 201 });
   } catch (error: any) {
     console.error('Failed to create agent:', error);

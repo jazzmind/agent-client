@@ -143,7 +143,7 @@ export default function NewAgentPage() {
             ) : (
               models.map((m) => (
                 <option key={m.id} value={m.id}>
-                  {m.name} {m.provider ? `(${m.provider})` : ''}
+                  {m.id}
                 </option>
               ))
             )}
