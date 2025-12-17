@@ -51,24 +51,16 @@ export function AppShell({ children, basePath }: { children: React.ReactNode; ba
         accountLink={`${process.env.NEXT_PUBLIC_AI_PORTAL_URL || ''}/portal/account`}
         adminNavigation={[
           { href: `${basePath}/admin`, label: 'Admin Dashboard' },
-          { href: `${basePath}/simulator`, label: 'Simulator' },
-          { href: `${basePath}/chat`, label: 'Chat' },
         ]}
       />
       {/* App navigation (kept separate from shared header) */}
-      <nav className="bg-white border-b border-gray-200">
+      <nav className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-12 flex items-center gap-6">
-          <Link href="/" className="text-sm font-medium text-gray-900 hover:text-blue-600">
+          <Link href="/" className="text-sm font-medium text-gray-900 dark:text-gray-100 hover:text-blue-600 dark:hover:text-blue-400">
             Dashboard
           </Link>
-          <Link href="/admin" className="text-sm font-medium text-gray-700 hover:text-blue-600">
+          <Link href="/admin" className="text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400">
             Admin
-          </Link>
-          <Link href="/simulator" className="text-sm font-medium text-gray-700 hover:text-blue-600">
-            Simulator
-          </Link>
-          <Link href="/chat" className="text-sm font-medium text-gray-700 hover:text-blue-600">
-            Chat
           </Link>
         </div>
       </nav>
