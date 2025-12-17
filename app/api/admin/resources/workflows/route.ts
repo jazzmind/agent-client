@@ -1,40 +1,42 @@
 import { NextRequest, NextResponse } from 'next/server';
 import * as agentClient from '@/lib/agent-api-client';
+import { requireAuthWithTokenExchange } from '@/lib/auth-middleware';
 
-function getTokenFromRequest(request: NextRequest): string | undefined {
-  const authHeader = request.headers.get('authorization');
-  if (authHeader?.startsWith('Bearer ')) {
-    return authHeader.substring(7);
-  }
-  const tokenCookie = request.cookies.get('auth_token');
-  return tokenCookie?.value;
-}
-
+/**
+ * GET /api/admin/resources/workflows
+ * List all workflows
+ */
 export async function GET(request: NextRequest) {
   try {
-    const token = getTokenFromRequest(request);
-    const workflows = await agentClient.listWorkflows(token);
+    const auth = await requireAuthWithTokenExchange(request);
+    if (auth instanceof NextResponse) return auth; // Auth failed, return error response
+    const workflows = await agentClient.listWorkflows(auth.agentApiToken);
     return NextResponse.json(workflows);
   } catch (error: any) {
-    console.error('Failed to fetch workflows:', error);
+    console.error('[API] Failed to list workflows:', error);
     return NextResponse.json(
-      { error: error.message || 'Failed to fetch workflows' },
-      { status: 500 }
+      { error: error.message || 'Failed to list workflows' },
+      { status: error.statusCode || 500 }
     );
   }
 }
 
+/**
+ * POST /api/admin/resources/workflows
+ * Create a new workflow
+ */
 export async function POST(request: NextRequest) {
   try {
-    const token = getTokenFromRequest(request);
+    const auth = await requireAuthWithTokenExchange(request);
+    if (auth instanceof NextResponse) return auth; // Auth failed, return error response
     const body = await request.json();
-    const workflow = await agentClient.createWorkflow(body, token);
+    const workflow = await agentClient.createWorkflow(body, auth.agentApiToken);
     return NextResponse.json(workflow, { status: 201 });
   } catch (error: any) {
-    console.error('Failed to create workflow:', error);
+    console.error('[API] Failed to create workflow:', error);
     return NextResponse.json(
       { error: error.message || 'Failed to create workflow' },
-      { status: 500 }
+      { status: error.statusCode || 500 }
     );
   }
 }
