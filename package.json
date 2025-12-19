@@ -15,6 +15,8 @@
   },
   "dependencies": {
     "@jazzmind/busibox-app": "^2.0.6",
+    "@types/dagre": "^0.7.53",
+    "dagre": "^0.8.5",
     "jose": "^6.1.2",
     "lucide-react": "^0.469.0",
     "next": "^16.0.10",

@@ -108,11 +108,13 @@ export default function AgentDetailPage() {
 
       {agent && (
         <div className="space-y-6">
-          {/* Header */}
-          <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-6">
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">{agent.display_name || agent.name}</h1>
-            <p className="text-gray-600 dark:text-gray-400 mt-2">{agent.description || 'No description'}</p>
-          </div>
+          {/* Header - Only show on details tab */}
+          {activeTab === 'details' && (
+            <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-6">
+              <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">{agent.display_name || agent.name}</h1>
+              <p className="text-gray-600 dark:text-gray-400 mt-2">{agent.description || 'No description'}</p>
+            </div>
+          )}
 
           {/* Tabs */}
           <div className="border-b border-gray-200 dark:border-gray-700">
@@ -214,7 +216,7 @@ export default function AgentDetailPage() {
           )}
 
           {activeTab === 'chat' && (
-            <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden" style={{ height: '800px' }}>
+            <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden" style={{ height: 'calc(100vh - 280px)' }}>
               {tokenError === 'not_authenticated' ? (
                 <div className="flex items-center justify-center h-full">
                   <div className="text-center max-w-md px-6">

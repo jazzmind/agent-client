@@ -27,8 +27,10 @@ import ReactFlow, {
   MarkerType,
   ReactFlowProvider,
   useReactFlow,
+  Position,
 } from 'reactflow';
 import 'reactflow/dist/style.css';
+import dagre from 'dagre';
 
 import StepNode, { StepNodeData } from './StepNode';
 import StepConfigPanel from './StepConfigPanel';
@@ -62,6 +64,49 @@ interface WorkflowEditorProps {
   readOnly?: boolean;
 }
 
+// Auto-layout using dagre
+function getLayoutedElements(nodes: Node[], edges: Edge[], direction = 'TB') {
+  const dagreGraph = new dagre.graphlib.Graph();
+  dagreGraph.setDefaultEdgeLabel(() => ({}));
+  
+  const nodeWidth = 250;
+  const nodeHeight = 100;
+  
+  const isHorizontal = direction === 'LR';
+  dagreGraph.setGraph({ 
+    rankdir: direction,
+    nodesep: isHorizontal ? 150 : 100,
+    ranksep: isHorizontal ? 200 : 150,
+    marginx: 50,
+    marginy: 50,
+  });
+
+  nodes.forEach((node) => {
+    dagreGraph.setNode(node.id, { width: nodeWidth, height: nodeHeight });
+  });
+
+  edges.forEach((edge) => {
+    dagreGraph.setEdge(edge.source, edge.target);
+  });
+
+  dagre.layout(dagreGraph);
+
+  const layoutedNodes = nodes.map((node) => {
+    const nodeWithPosition = dagreGraph.node(node.id);
+    return {
+      ...node,
+      targetPosition: isHorizontal ? Position.Left : Position.Top,
+      sourcePosition: isHorizontal ? Position.Right : Position.Bottom,
+      position: {
+        x: nodeWithPosition.x - nodeWidth / 2,
+        y: nodeWithPosition.y - nodeHeight / 2,
+      },
+    };
+  });
+
+  return { nodes: layoutedNodes, edges };
+}
+
 // Convert workflow steps to ReactFlow nodes/edges
 function workflowToGraph(workflow: any): { nodes: Node[]; edges: Edge[] } {
   if (!workflow?.steps?.length) {
@@ -83,19 +128,22 @@ function workflowToGraph(workflow: any): { nodes: Node[]; edges: Edge[] } {
     {
       id: 'start',
       type: 'stepNode',
-      position: { x: 300, y: 50 },
+      position: workflow.layout?.start || { x: 300, y: 50 },
       data: { id: 'start', type: 'start', name: 'Start' },
     },
   ];
 
   const edges: Edge[] = [];
-  let y = 150;
 
   workflow.steps.forEach((step: any, index: number) => {
+    // Use saved position if available, otherwise use default
+    const savedPosition = workflow.layout?.[step.id];
+    const defaultPosition = { x: 300, y: 150 + (index * 150) };
+    
     nodes.push({
       id: step.id,
       type: 'stepNode',
-      position: { x: 300, y },
+      position: savedPosition || defaultPosition,
       data: {
         ...step,
         type: step.type,
@@ -105,9 +153,11 @@ function workflowToGraph(workflow: any): { nodes: Node[]; edges: Edge[] } {
         agent_id: step.agent || step.agent_id,
       },
     });
-    y += 150;
+  });
 
-    // Create edges
+  // Create edges (same as before)
+  workflow.steps.forEach((step: any, index: number) => {
+
     if (index === 0) {
       edges.push({
         id: `start-${step.id}`,
@@ -163,11 +213,12 @@ function workflowToGraph(workflow: any): { nodes: Node[]; edges: Edge[] } {
     }
   });
 
-  // Add end node
+  // Add end node with saved position
+  const endY = workflow.steps.length * 150 + 150;
   nodes.push({
     id: 'end',
     type: 'stepNode',
-    position: { x: 300, y },
+    position: workflow.layout?.end || { x: 300, y: endY },
     data: { id: 'end', type: 'end', name: 'End' },
   });
 
@@ -343,12 +394,27 @@ function WorkflowEditorInner({
     [setNodes, setEdges]
   );
 
-  // Save workflow
+  // Auto-layout nodes
+  const handleAutoLayout = useCallback(() => {
+    const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(nodes, edges, 'TB');
+    setNodes(layoutedNodes);
+    setEdges(layoutedEdges);
+  }, [nodes, edges, setNodes, setEdges]);
+
+  // Save workflow with layout positions
   const handleSave = useCallback(() => {
     const steps = graphToWorkflow(nodes, edges);
+    
+    // Save node positions in layout object
+    const layout: Record<string, { x: number; y: number }> = {};
+    nodes.forEach(node => {
+      layout[node.id] = node.position;
+    });
+    
     onSave?.({
       ...workflow,
       steps,
+      layout,
     });
   }, [nodes, edges, workflow, onSave]);
 
@@ -364,14 +430,26 @@ function WorkflowEditorInner({
             {nodes.filter((n) => n.data.type !== 'start' && n.data.type !== 'end').length} steps
           </span>
         </div>
-        {onSave && !readOnly && (
+        <div className="flex items-center gap-3">
           <button
-            onClick={handleSave}
-            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors"
+            onClick={handleAutoLayout}
+            className="px-4 py-2 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-900 dark:text-gray-100 rounded-lg font-medium transition-colors flex items-center gap-2"
+            title="Automatically arrange nodes"
           >
-            Save Workflow
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 5a1 1 0 011-1h4a1 1 0 011 1v7a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM14 5a1 1 0 011-1h4a1 1 0 011 1v7a1 1 0 01-1 1h-4a1 1 0 01-1-1V5zM4 16a1 1 0 011-1h4a1 1 0 011 1v3a1 1 0 01-1 1H5a1 1 0 01-1-1v-3zM14 16a1 1 0 011-1h4a1 1 0 011 1v3a1 1 0 01-1 1h-4a1 1 0 01-1-1v-3z" />
+            </svg>
+            Auto Layout
           </button>
-        )}
+          {onSave && !readOnly && (
+            <button
+              onClick={handleSave}
+              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors"
+            >
+              Save Workflow
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="flex-1 flex">
