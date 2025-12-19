@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAuthWithTokenExchange } from '@/lib/auth-helpers';
-import { agentClient } from '@/lib/agent-api-client';
+import { requireAuthWithTokenExchange } from '@/lib/auth-middleware';
+import { getWorkflowExecutionSteps } from '@/lib/agent-api-client';
 
 // GET /api/workflows/executions/[id]/steps - Get step executions
 export async function GET(
@@ -12,7 +12,7 @@ export async function GET(
 
   try {
     const { id } = await params;
-    const steps = await agentClient.getWorkflowExecutionSteps(id, auth.agentApiToken);
+    const steps = await getWorkflowExecutionSteps(id, auth.agentApiToken);
     return NextResponse.json(steps);
   } catch (error: any) {
     console.error('Error fetching execution steps:', error);

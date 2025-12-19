@@ -232,11 +232,13 @@ export default function WorkflowsListPage() {
                 <span className={`px-2 py-1 rounded text-xs font-medium ${getStatusColor(workflow.active)}`}>
                   {workflow.active ? 'Active' : 'Inactive'}
                 </span>
-                <span className="px-2 py-1 rounded text-xs font-medium bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300">
-                  {getTriggerIcon(workflow.trigger.type)} {workflow.trigger.type}
-                </span>
+                {workflow.trigger && (
+                  <span className="px-2 py-1 rounded text-xs font-medium bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300">
+                    {getTriggerIcon(workflow.trigger.type)} {workflow.trigger.type}
+                  </span>
+                )}
                 <span className="px-2 py-1 rounded text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
-                  {workflow.steps.length} steps
+                  {workflow.steps?.length || 0} steps
                 </span>
               </div>
 

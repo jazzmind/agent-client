@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAuthWithTokenExchange } from '@/lib/auth-helpers';
-import { agentClient } from '@/lib/agent-api-client';
+import { requireAuthWithTokenExchange } from '@/lib/auth-middleware';
+import { listWorkflowExecutions } from '@/lib/agent-api-client';
 
 // GET /api/workflows/[id]/executions - List executions for a workflow
 export async function GET(
@@ -17,7 +17,7 @@ export async function GET(
     const offset = searchParams.get('offset') ? parseInt(searchParams.get('offset')!) : undefined;
     const status = searchParams.get('status') || undefined;
 
-    const executions = await agentClient.listWorkflowExecutions(
+    const executions = await listWorkflowExecutions(
       id,
       { limit, offset, status },
       auth.agentApiToken

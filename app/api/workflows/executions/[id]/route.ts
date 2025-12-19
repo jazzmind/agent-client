@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAuthWithTokenExchange } from '@/lib/auth-helpers';
-import { agentClient } from '@/lib/agent-api-client';
+import { requireAuthWithTokenExchange } from '@/lib/auth-middleware';
+import { getWorkflowExecution } from '@/lib/agent-api-client';
 
 // GET /api/workflows/executions/[id] - Get execution details
 export async function GET(
@@ -12,7 +12,7 @@ export async function GET(
 
   try {
     const { id } = await params;
-    const execution = await agentClient.getWorkflowExecution(id, auth.agentApiToken);
+    const execution = await getWorkflowExecution(id, auth.agentApiToken);
     return NextResponse.json(execution);
   } catch (error: any) {
     console.error('Error fetching execution:', error);

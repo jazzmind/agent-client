@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAuthWithTokenExchange } from '@/lib/auth-helpers';
-import { agentClient } from '@/lib/agent-api-client';
+import { requireAuthWithTokenExchange } from '@/lib/auth-middleware';
+import { executeWorkflow } from '@/lib/agent-api-client';
 
 // POST /api/workflows/[id]/execute - Execute a workflow
 export async function POST(
@@ -15,7 +15,7 @@ export async function POST(
     const body = await request.json();
     const { input_data, guardrails } = body;
 
-    const execution = await agentClient.executeWorkflow(
+    const execution = await executeWorkflow(
       id,
       input_data || {},
       guardrails,
