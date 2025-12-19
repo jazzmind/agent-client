@@ -69,11 +69,15 @@ export default function StepConfigPanel({
     <div className="space-y-4">
       <div>
         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-          Agent
+          Agent *
         </label>
         <select
-          value={localStep.agent_id || ''}
-          onChange={(e) => handleChange('agent_id', e.target.value)}
+          value={localStep.agent || localStep.agent_id || ''}
+          onChange={(e) => {
+            // Set both 'agent' (for backend) and 'agent_id' (for backwards compat)
+            handleChange('agent', e.target.value);
+            handleChange('agent_id', e.target.value);
+          }}
           className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
         >
           <option value="">Select an agent...</option>
@@ -83,6 +87,9 @@ export default function StepConfigPanel({
             </option>
           ))}
         </select>
+        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+          * Required field
+        </p>
       </div>
       <div>
         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">

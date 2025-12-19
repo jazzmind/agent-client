@@ -100,6 +100,9 @@ function workflowToGraph(workflow: any): { nodes: Node[]; edges: Edge[] } {
         ...step,
         type: step.type,
         name: step.name || step.id,
+        // Normalize agent field - store as both 'agent' and 'agent_id' for UI consistency
+        agent: step.agent || step.agent_id,
+        agent_id: step.agent || step.agent_id,
       },
     });
     y += 150;
@@ -197,7 +200,13 @@ function graphToWorkflow(nodes: Node[], edges: Edge[]): any[] {
     };
 
     // Copy type-specific data
-    if (node.data.agent_id) step.agent_id = node.data.agent_id;
+    // For agent steps, prefer 'agent' field but also check 'agent_id' for backwards compat
+    if (node.data.agent) {
+      step.agent = node.data.agent;
+    } else if (node.data.agent_id) {
+      step.agent = node.data.agent_id;
+    }
+    
     if (node.data.agent_prompt) step.agent_prompt = node.data.agent_prompt;
     if (node.data.tool) step.tool = node.data.tool;
     if (node.data.tool_args) step.tool_args = node.data.tool_args;

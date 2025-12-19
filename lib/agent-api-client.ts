@@ -329,7 +329,7 @@ export async function listRuns(filters?: {
   return handleResponse(response);
 }
 
-export async function executeWorkflow(data: {
+export async function executeWorkflowRun(data: {
   workflow_id: string;
   input: Record<string, any>;
   tier?: string;
@@ -636,14 +636,20 @@ export async function getRunStreamResponse(runId: string, token?: string): Promi
  * Get workflow execution details
  */
 export async function getWorkflowExecution(executionId: string, token?: string): Promise<any> {
-  return fetchWithAuth(`/agents/workflows/executions/${executionId}`, { method: 'GET' }, token);
+  const response = await fetch(`${AGENT_API_URL}/agents/workflows/executions/${executionId}`, {
+    headers: getAgentApiHeaders(token),
+  });
+  return handleResponse(response);
 }
 
 /**
  * Get step executions for a workflow execution
  */
 export async function getWorkflowExecutionSteps(executionId: string, token?: string): Promise<any[]> {
-  return fetchWithAuth(`/agents/workflows/executions/${executionId}/steps`, { method: 'GET' }, token);
+  const response = await fetch(`${AGENT_API_URL}/agents/workflows/executions/${executionId}/steps`, {
+    headers: getAgentApiHeaders(token),
+  });
+  return handleResponse(response);
 }
 
 /**
@@ -655,14 +661,12 @@ export async function executeWorkflow(
   guardrails?: any,
   token?: string
 ): Promise<any> {
-  return fetchWithAuth(
-    `/agents/workflows/${workflowId}/execute`,
-    {
-      method: 'POST',
-      body: JSON.stringify({ input_data: inputData, guardrails }),
-    },
-    token
-  );
+  const response = await fetch(`${AGENT_API_URL}/agents/workflows/${workflowId}/execute`, {
+    method: 'POST',
+    headers: getAgentApiHeaders(token),
+    body: JSON.stringify({ input_data: inputData, guardrails }),
+  });
+  return handleResponse(response);
 }
 
 /**
@@ -678,6 +682,9 @@ export async function listWorkflowExecutions(
   if (options?.offset) params.append('offset', options.offset.toString());
   if (options?.status) params.append('status', options.status);
   
-  const url = `/agents/workflows/${workflowId}/executions${params.toString() ? '?' + params.toString() : ''}`;
-  return fetchWithAuth(url, { method: 'GET' }, token);
+  const url = `${AGENT_API_URL}/agents/workflows/${workflowId}/executions${params.toString() ? '?' + params.toString() : ''}`;
+  const response = await fetch(url, {
+    headers: getAgentApiHeaders(token),
+  });
+  return handleResponse(response);
 }
