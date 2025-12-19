@@ -5,17 +5,18 @@ import { agentClient } from '@/lib/agent-api-client';
 // POST /api/workflows/[id]/execute - Execute a workflow
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const auth = await requireAuthWithTokenExchange(request);
   if (auth instanceof NextResponse) return auth;
 
   try {
+    const { id } = await params;
     const body = await request.json();
     const { input_data, guardrails } = body;
 
     const execution = await agentClient.executeWorkflow(
-      params.id,
+      id,
       input_data || {},
       guardrails,
       auth.agentApiToken

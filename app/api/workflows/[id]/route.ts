@@ -8,12 +8,13 @@ import { requireAuthWithTokenExchange } from '@/lib/auth-middleware';
  */
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const auth = await requireAuthWithTokenExchange(request);
     if (auth instanceof NextResponse) return auth; // Auth failed, return error response
-    const workflow = await agentClient.getWorkflow(params.id, auth.agentApiToken);
+    const { id } = await params;
+    const workflow = await agentClient.getWorkflow(id, auth.agentApiToken);
     return NextResponse.json(workflow);
   } catch (error: any) {
     console.error('[API] Failed to get workflow:', error);
@@ -30,14 +31,15 @@ export async function GET(
  */
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const auth = await requireAuthWithTokenExchange(request);
     if (auth instanceof NextResponse) return auth; // Auth failed, return error response
+    const { id } = await params;
     const body = await request.json();
     
-    const workflow = await agentClient.updateWorkflow(params.id, body, auth.agentApiToken);
+    const workflow = await agentClient.updateWorkflow(id, body, auth.agentApiToken);
     return NextResponse.json(workflow);
   } catch (error: any) {
     console.error('[API] Failed to update workflow:', error);
@@ -54,12 +56,13 @@ export async function PUT(
  */
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const auth = await requireAuthWithTokenExchange(request);
     if (auth instanceof NextResponse) return auth; // Auth failed, return error response
-    await agentClient.deleteWorkflow(params.id, auth.agentApiToken);
+    const { id } = await params;
+    await agentClient.deleteWorkflow(id, auth.agentApiToken);
     return NextResponse.json({ success: true }, { status: 204 });
   } catch (error: any) {
     console.error('[API] Failed to delete workflow:', error);

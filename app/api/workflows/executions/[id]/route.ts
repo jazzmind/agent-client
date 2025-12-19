@@ -5,13 +5,14 @@ import { agentClient } from '@/lib/agent-api-client';
 // GET /api/workflows/executions/[id] - Get execution details
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const auth = await requireAuthWithTokenExchange(request);
   if (auth instanceof NextResponse) return auth;
 
   try {
-    const execution = await agentClient.getWorkflowExecution(params.id, auth.agentApiToken);
+    const { id } = await params;
+    const execution = await agentClient.getWorkflowExecution(id, auth.agentApiToken);
     return NextResponse.json(execution);
   } catch (error: any) {
     console.error('Error fetching execution:', error);
