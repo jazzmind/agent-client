@@ -14,7 +14,7 @@
     "build-storybook": "storybook build"
   },
   "dependencies": {
-    "@jazzmind/busibox-app": "^2.0.6",
+    "@jazzmind/busibox-app": "^2.0.7",
     "@types/dagre": "^0.7.53",
     "dagre": "^0.8.5",
     "jose": "^6.1.2",
