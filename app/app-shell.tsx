@@ -2,17 +2,24 @@
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { FetchWrapper, Footer, Header, VersionBar } from '@jazzmind/busibox-app';
+import { FetchWrapper, Footer, VersionBar } from '@jazzmind/busibox-app';
 import type { SessionData } from '@jazzmind/busibox-app';
 import { TokenExchange } from '@/components/auth/TokenExchange';
+import { CustomHeader } from '@/components/CustomHeader';
 
 export function AppShell({ children, basePath }: { children: React.ReactNode; basePath: string }) {
   const [session, setSession] = useState<SessionData>({ user: null, isAuthenticated: false });
-  const portalUrl = process.env.NEXT_PUBLIC_AI_PORTAL_URL ? `${process.env.NEXT_PUBLIC_AI_PORTAL_URL}/portal/home` : '/portal/home';
+  // Use absolute URL to avoid basePath prepending - just go to /portal (home is default)
+  const portalUrl = process.env.NEXT_PUBLIC_AI_PORTAL_URL 
+    ? `${process.env.NEXT_PUBLIC_AI_PORTAL_URL}` 
+    : '/portal';
+  
+  // App home link (for app name) - should go to /agents
+  const appHomeLink = basePath || '/';
 
   const onLogout = useCallback(async () => {
     try {
-      await fetch('/api/logout', { method: 'POST' });
+      await fetch('/api/logout', { method: 'POST', credentials: 'include' });
     } catch {
       // ignore
     }
@@ -27,7 +34,9 @@ export function AppShell({ children, basePath }: { children: React.ReactNode; ba
     let cancelled = false;
     async function loadSession() {
       try {
-        const res = await fetch('/api/session');
+        const res = await fetch('/api/session', {
+          credentials: 'include', // Important: include cookies
+        });
         const data = await res.json();
         if (!cancelled) setSession(data);
       } catch {
@@ -44,11 +53,12 @@ export function AppShell({ children, basePath }: { children: React.ReactNode; ba
     <>
       <TokenExchange />
       <FetchWrapper />
-      <Header
+      <CustomHeader
         session={session}
         onLogout={onLogout}
-        appsLink={portalUrl}
-        accountLink={`${process.env.NEXT_PUBLIC_AI_PORTAL_URL || ''}/portal/account`}
+        portalUrl={portalUrl}
+        accountLink={`${process.env.NEXT_PUBLIC_AI_PORTAL_URL || ''}/account`}
+        appHomeLink={appHomeLink}
         adminNavigation={[
           { href: `${basePath}/admin`, label: 'Admin Dashboard' },
         ]}

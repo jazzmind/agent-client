@@ -31,7 +31,9 @@ export default function DashboardPage() {
       setLoading(true);
       setError(null);
       try {
-        const res = await fetch('/api/agents');
+        const res = await fetch('/api/agents', {
+          credentials: 'include', // Include cookies for auth
+        });
         if (!res.ok) {
           const data = await res.json().catch(() => ({}));
           throw new Error(data.error || `Failed to load agents (${res.status})`);

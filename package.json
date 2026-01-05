@@ -1,20 +1,24 @@
 {
-  "name": "agent-client",
+  "name": "agent-manager",
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev -p 3001",
     "build": "next build",
-    "start": "next start",
+    "start": "next start -p 3001",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "test:ui": "vitest --ui",
-    "storybook": "storybook dev -p 6006",
-    "build-storybook": "storybook build"
+    "storybook": "storybook dev -p 6001",
+    "build-storybook": "storybook build",
+    "update:busibox-app": "./scripts/update-busibox-app.sh",
+    "link:busibox": "./scripts/link-busibox.sh",
+    "link:local": "./scripts/link-local-busibox.sh",
+    "unlink:local": "./scripts/unlink-local-busibox.sh"
   },
   "dependencies": {
-    "@jazzmind/busibox-app": "^2.0.7",
+    "@jazzmind/busibox-app": "^2.1.7",
     "@types/dagre": "^0.7.53",
     "dagre": "^0.8.5",
     "jose": "^6.1.2",

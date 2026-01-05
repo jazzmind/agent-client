@@ -13,7 +13,8 @@ import { parseJWTPayload } from './auth-helper';
 const TOKEN_EXCHANGE_GRANT = 'urn:ietf:params:oauth:grant-type:token-exchange';
 
 function getAuthzBaseUrl(): string {
-  return process.env.AUTHZ_BASE_URL || 'http://10.96.200.210:8010';
+  // Default to localhost proxy; override with AUTHZ_BASE_URL for direct access
+  return process.env.AUTHZ_BASE_URL || 'https://localhost/api/authz';
 }
 
 function getAuthzClientId(): string {
