@@ -210,6 +210,28 @@ export async function createTool(data: any, token?: string) {
   return handleResponse(response);
 }
 
+export interface ToolTestResult {
+  success: boolean;
+  output: Record<string, any> | null;
+  error: string | null;
+  execution_time_ms: number;
+  tool_name: string;
+  input_used: Record<string, any>;
+}
+
+export async function testTool(
+  toolId: string,
+  input: Record<string, any>,
+  token?: string
+): Promise<ToolTestResult> {
+  const response = await fetch(`${AGENT_API_URL}/agents/tools/${toolId}/test`, {
+    method: 'POST',
+    headers: getAgentApiHeaders(token),
+    body: JSON.stringify({ input }),
+  });
+  return handleResponse(response) as Promise<ToolTestResult>;
+}
+
 // ==========================================================================
 // WORKFLOWS
 // ==========================================================================
@@ -438,11 +460,23 @@ export interface Message {
   created_at: string;
 }
 
-export async function listConversations(token?: string) {
-  const response = await fetch(`${AGENT_API_URL}/conversations`, {
+export async function listConversations(filters?: {
+  agent_id?: string;
+  limit?: number;
+  offset?: number;
+}, token?: string) {
+  const params = new URLSearchParams();
+  if (filters) {
+    Object.entries(filters).forEach(([key, value]) => {
+      if (value !== undefined) params.append(key, String(value));
+    });
+  }
+  
+  const url = `${AGENT_API_URL}/conversations${params.toString() ? `?${params}` : ''}`;
+  const response = await fetch(url, {
     headers: getAgentApiHeaders(token),
   });
-  return handleResponse(response) as Promise<Conversation[]>;
+  return handleResponse(response) as Promise<{ conversations: Conversation[]; total: number; limit: number; offset: number }>;
 }
 
 export async function getConversation(id: string, token?: string) {

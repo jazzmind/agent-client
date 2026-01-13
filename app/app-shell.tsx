@@ -1,13 +1,14 @@
 'use client';
 
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { FetchWrapper, Footer, VersionBar } from '@jazzmind/busibox-app';
 import type { SessionData } from '@jazzmind/busibox-app';
-import { TokenExchange } from '@/components/auth/TokenExchange';
+import { AuthProvider, useAuth } from '@/components/auth/AuthContext';
 import { CustomHeader } from '@/components/CustomHeader';
 
-export function AppShell({ children, basePath }: { children: React.ReactNode; basePath: string }) {
+function AppShellContent({ children, basePath }: { children: React.ReactNode; basePath: string }) {
+  const { isReady, refreshKey } = useAuth();
   const [session, setSession] = useState<SessionData>({ user: null, isAuthenticated: false });
   // Use absolute URL to avoid basePath prepending - just go to /portal (home is default)
   const portalUrl = process.env.NEXT_PUBLIC_AI_PORTAL_URL 
@@ -30,7 +31,10 @@ export function AppShell({ children, basePath }: { children: React.ReactNode; ba
     }
   }, []);
 
+  // Load session after auth is ready, and reload when refreshKey changes
   useEffect(() => {
+    if (!isReady) return;
+    
     let cancelled = false;
     async function loadSession() {
       try {
@@ -47,11 +51,10 @@ export function AppShell({ children, basePath }: { children: React.ReactNode; ba
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [isReady, refreshKey]);
 
   return (
     <>
-      <TokenExchange />
       <FetchWrapper />
       <CustomHeader
         session={session}
@@ -84,6 +87,14 @@ export function AppShell({ children, basePath }: { children: React.ReactNode; ba
       <Footer />
       <VersionBar />
     </>
+  );
+}
+
+export function AppShell({ children, basePath }: { children: React.ReactNode; basePath: string }) {
+  return (
+    <AuthProvider>
+      <AppShellContent basePath={basePath}>{children}</AppShellContent>
+    </AuthProvider>
   );
 }
 

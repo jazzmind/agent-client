@@ -10,17 +10,23 @@ import React, { useEffect, useState } from 'react';
 import { Tool } from '@/lib/types';
 import { ToolList } from '@/components/tools/ToolList';
 import { ToolConfigModal } from '@/components/tools/ToolConfigModal';
+import { useAuth } from '@/components/auth/AuthContext';
 
 export default function ToolsPage() {
+  const { isReady, refreshKey } = useAuth();
   const [tools, setTools] = useState<Tool[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedTool, setSelectedTool] = useState<Tool | null>(null);
   const [isConfigModalOpen, setIsConfigModalOpen] = useState(false);
 
+  // Wait for auth to be ready before fetching data
   useEffect(() => {
+    if (!isReady) {
+      return;
+    }
     loadTools();
-  }, []);
+  }, [isReady, refreshKey]);
 
   async function loadTools() {
     setLoading(true);

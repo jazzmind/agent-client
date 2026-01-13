@@ -8,6 +8,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { useAuth } from '@/components/auth/AuthContext';
 
 interface Workflow {
   id: string;
@@ -60,6 +61,7 @@ const getExecutionStatusColor = (status: string) => {
 };
 
 export default function WorkflowsListPage() {
+  const { isReady, refreshKey } = useAuth();
   const router = useRouter();
   const [workflows, setWorkflows] = useState<Workflow[]>([]);
   const [executions, setExecutions] = useState<Record<string, WorkflowExecution[]>>({});
@@ -67,9 +69,13 @@ export default function WorkflowsListPage() {
   const [error, setError] = useState<string | null>(null);
   const [executing, setExecuting] = useState<string | null>(null);
 
+  // Wait for auth to be ready before fetching data
   useEffect(() => {
+    if (!isReady) {
+      return;
+    }
     loadWorkflows();
-  }, []);
+  }, [isReady, refreshKey]);
 
   const loadWorkflows = async () => {
     try {

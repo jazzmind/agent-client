@@ -11,6 +11,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { Agent } from '@/lib/types';
 import { AgentList } from '@/components/agents/AgentList';
+import { useAuth } from '@/components/auth/AuthContext';
 
 type DashboardStats = {
   personalActive: number;
@@ -22,11 +23,17 @@ type DashboardStats = {
 };
 
 export default function DashboardPage() {
+  const { isReady, refreshKey } = useAuth();
   const [agents, setAgents] = useState<Agent[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Wait for auth to be ready before fetching data
   useEffect(() => {
+    if (!isReady) {
+      return;
+    }
+    
     async function load() {
       setLoading(true);
       setError(null);
@@ -60,7 +67,7 @@ export default function DashboardPage() {
       }
     }
     load();
-  }, []);
+  }, [isReady, refreshKey]);
 
   const stats: DashboardStats = useMemo(() => {
     const builtin = agents.filter((a) => a.is_builtin);

@@ -2,13 +2,33 @@
 
 import React, { useEffect, useState, useMemo } from 'react';
 import Link from 'next/link';
-import { useParams, useSearchParams } from 'next/navigation';
+import { useParams, useSearchParams, useRouter } from 'next/navigation';
 import { SimpleChatInterface } from '@jazzmind/busibox-app/components';
+import { ConversationsList, RunsList, RunDetailPanel } from '@/components/conversations';
+import { ToolBadgeList } from '@/components/tools';
+import { useAuth } from '@/components/auth/AuthContext';
 import type { Agent } from '@/lib/types';
 
+type TabType = 'details' | 'chat' | 'conversations' | 'workflow';
+
+interface Run {
+  id: string;
+  agent_id: string;
+  workflow_id?: string | null;
+  status: 'pending' | 'running' | 'succeeded' | 'failed' | 'timeout';
+  input: Record<string, any>;
+  output?: Record<string, any> | null;
+  events: any[];
+  created_by?: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 export default function AgentDetailPage() {
+  const { isReady, refreshKey } = useAuth();
   const params = useParams<{ id: string }>();
   const searchParams = useSearchParams();
+  const router = useRouter();
   const agentId = params.id;
   const chatParam = searchParams.get('chat');
   const tabParam = searchParams.get('tab');
@@ -18,7 +38,8 @@ export default function AgentDetailPage() {
   const [error, setError] = useState<string | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [tokenError, setTokenError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'details' | 'chat' | 'workflow'>('details');
+  const [activeTab, setActiveTab] = useState<TabType>('details');
+  const [selectedRunId, setSelectedRunId] = useState<string | null>(null);
 
   // Determine if agent supports attachments
   const supportsAttachments = useMemo(() => {
@@ -35,7 +56,12 @@ export default function AgentDetailPage() {
     return agent?.tools?.names?.includes('rag') || false;
   }, [agent]);
 
+  // Wait for auth to be ready before fetching data
   useEffect(() => {
+    if (!isReady || !agentId) {
+      return;
+    }
+    
     async function load() {
       setLoading(true);
       setError(null);
@@ -67,19 +93,34 @@ export default function AgentDetailPage() {
         setLoading(false);
       }
     }
-    if (agentId) load();
-  }, [agentId]);
+    load();
+  }, [isReady, refreshKey, agentId]);
 
   // Sync activeTab with URL params
   useEffect(() => {
     if (chatParam === 'true') {
       setActiveTab('chat');
     } else if (tabParam) {
-      setActiveTab(tabParam as any);
+      setActiveTab(tabParam as TabType);
     } else {
       setActiveTab('details');
     }
   }, [chatParam, tabParam]);
+
+  // Update URL when tab changes
+  const handleTabChange = (tab: TabType) => {
+    setActiveTab(tab);
+    setSelectedRunId(null); // Clear selected run when switching tabs
+    const newUrl = tab === 'details' 
+      ? `/agent/${agentId}` 
+      : `/agent/${agentId}?tab=${tab}`;
+    router.push(newUrl, { scroll: false });
+  };
+
+  // Handle run selection
+  const handleSelectRun = (run: Run) => {
+    setSelectedRunId(run.id);
+  };
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-8 space-y-6">
@@ -120,7 +161,7 @@ export default function AgentDetailPage() {
           <div className="border-b border-gray-200 dark:border-gray-700">
             <nav className="flex space-x-8">
               <button
-                onClick={() => setActiveTab('details')}
+                onClick={() => handleTabChange('details')}
                 className={`py-4 px-1 border-b-2 font-medium text-sm ${
                   activeTab === 'details'
                     ? 'border-blue-500 text-blue-600 dark:text-blue-400'
@@ -130,7 +171,7 @@ export default function AgentDetailPage() {
                 Details
               </button>
               <button
-                onClick={() => setActiveTab('chat')}
+                onClick={() => handleTabChange('chat')}
                 className={`py-4 px-1 border-b-2 font-medium text-sm ${
                   activeTab === 'chat'
                     ? 'border-blue-500 text-blue-600 dark:text-blue-400'
@@ -139,9 +180,19 @@ export default function AgentDetailPage() {
               >
                 Chat
               </button>
+              <button
+                onClick={() => handleTabChange('conversations')}
+                className={`py-4 px-1 border-b-2 font-medium text-sm ${
+                  activeTab === 'conversations'
+                    ? 'border-blue-500 text-blue-600 dark:text-blue-400'
+                    : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:border-gray-300 dark:hover:border-gray-600'
+                }`}
+              >
+                Conversations
+              </button>
               {agent.workflow && (
                 <button
-                  onClick={() => setActiveTab('workflow')}
+                  onClick={() => handleTabChange('workflow')}
                   className={`py-4 px-1 border-b-2 font-medium text-sm ${
                     activeTab === 'workflow'
                       ? 'border-blue-500 text-blue-600 dark:text-blue-400'
@@ -176,16 +227,14 @@ export default function AgentDetailPage() {
               {agent.tools && Object.keys(agent.tools).length > 0 && (
                 <div>
                   <div className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Available Tools</div>
-                  <div className="flex flex-wrap gap-2">
-                    {(agent.tools.names || []).map((tool: string) => (
-                      <span
-                        key={tool}
-                        className="px-3 py-1 text-xs bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 rounded-full"
-                      >
-                        {tool}
-                      </span>
-                    ))}
-                  </div>
+                  <ToolBadgeList
+                    tools={(agent.tools.names || []).map((toolName: string) => ({
+                      name: toolName,
+                      is_builtin: true, // Assume built-in for now; could be enhanced with actual tool lookup
+                    }))}
+                    size="md"
+                    interactive={true}
+                  />
                 </div>
               )}
 
@@ -272,6 +321,67 @@ export default function AgentDetailPage() {
                   placeholder={`Chat with ${agent.display_name || agent.name}...`}
                   welcomeMessage={`Hi! I'm **${agent.display_name || agent.name}**.\n\n${agent.description || 'How can I help you today?'}`}
                 />
+              )}
+            </div>
+          )}
+
+          {activeTab === 'conversations' && (
+            <div className="space-y-6">
+              {!token ? (
+                <div className="flex items-center justify-center py-8">
+                  <div className="text-center max-w-md px-6">
+                    <div className="text-6xl mb-4">🔒</div>
+                    <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-2">
+                      Authentication Required
+                    </h3>
+                    <p className="text-gray-600 dark:text-gray-400 mb-4">
+                      You need to be authenticated to view conversation history.
+                    </p>
+                  </div>
+                </div>
+              ) : selectedRunId ? (
+                <RunDetailPanel 
+                  runId={selectedRunId}
+                  token={token}
+                  onClose={() => setSelectedRunId(null)} 
+                />
+              ) : (
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  {/* Chat Conversations Section */}
+                  <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-6">
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4 flex items-center gap-2">
+                      <span>💬</span>
+                      Chat Conversations
+                    </h3>
+                    <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+                      Conversations where this agent was used via chat routing.
+                    </p>
+                    <ConversationsList 
+                      agentId={agent.id}
+                      token={token}
+                      onSelectConversation={(id) => {
+                        // Could navigate to conversation detail or expand inline
+                        console.log('Selected conversation:', id);
+                      }}
+                    />
+                  </div>
+
+                  {/* API Runs Section */}
+                  <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-6">
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4 flex items-center gap-2">
+                      <span>🚀</span>
+                      API Runs
+                    </h3>
+                    <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+                      Direct executions of this agent via the API.
+                    </p>
+                    <RunsList 
+                      agentId={agent.id}
+                      token={token}
+                      onSelectRun={handleSelectRun}
+                    />
+                  </div>
+                </div>
               )}
             </div>
           )}
