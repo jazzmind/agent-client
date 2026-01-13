@@ -1,5 +1,5 @@
 /**
- * Shared TypeScript types for Agent Client
+ * Shared TypeScript types for Agent Manager
  * 
  * These types match the agent-server API schemas and are used throughout
  * the application for type safety and consistency.

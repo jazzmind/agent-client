@@ -8,8 +8,20 @@ import { ConversationsList, RunsList, RunDetailPanel } from '@/components/conver
 import { ToolBadgeList } from '@/components/tools';
 import { useAuth } from '@/components/auth/AuthContext';
 import type { Agent } from '@/lib/types';
+import { 
+  ChevronLeft, 
+  MessageSquare, 
+  Info, 
+  History, 
+  GitBranch, 
+  Edit, 
+  Bot,
+  ChevronRight,
+  Terminal,
+  Clock
+} from 'lucide-react';
 
-type TabType = 'details' | 'chat' | 'conversations' | 'workflow';
+type TabType = 'details' | 'chat' | 'api_logs' | 'workflow';
 
 interface Run {
   id: string;
@@ -22,6 +34,104 @@ interface Run {
   created_by?: string | null;
   created_at: string;
   updated_at: string;
+}
+
+interface SidebarConversation {
+  id: string;
+  title: string;
+  updated_at: string;
+}
+
+// Compact conversation list for sidebar
+function SidebarConversationsList({
+  agentId,
+  token,
+  selectedId,
+  onSelect,
+  deletedConversationId,
+}: {
+  agentId: string;
+  token: string;
+  selectedId: string | null;
+  onSelect: (id: string) => void;
+  deletedConversationId?: string | null;
+}) {
+  const [conversations, setConversations] = useState<SidebarConversation[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function fetchConversations() {
+      try {
+        const res = await fetch(`/api/conversations?agent_id=${agentId}&limit=20`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const data = await res.json();
+        setConversations(data.conversations || []);
+      } catch (e) {
+        console.error('Failed to load conversations:', e);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchConversations();
+  }, [agentId, token]);
+
+  // Remove conversation from list when deleted
+  useEffect(() => {
+    if (deletedConversationId) {
+      setConversations(prev => prev.filter(c => c.id !== deletedConversationId));
+    }
+  }, [deletedConversationId]);
+
+  const formatTime = (dateString: string) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
+
+    if (diffMins < 1) return 'Just now';
+    if (diffMins < 60) return `${diffMins}m ago`;
+    if (diffHours < 24) return `${diffHours}h ago`;
+    if (diffDays < 7) return `${diffDays}d ago`;
+    return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+  };
+
+  if (loading) {
+    return (
+      <div className="text-xs text-gray-400 dark:text-gray-500 px-2 py-4 text-center">
+        Loading...
+      </div>
+    );
+  }
+
+  if (conversations.length === 0) {
+    return (
+      <div className="text-xs text-gray-400 dark:text-gray-500 px-2 py-4 text-center">
+        No conversations yet
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-1">
+      {conversations.map((conv) => (
+        <button
+          key={conv.id}
+          onClick={() => onSelect(conv.id)}
+          className={`w-full text-left px-2 py-1.5 rounded text-xs transition-colors ${
+            selectedId === conv.id
+              ? 'bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300'
+              : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700/50'
+          }`}
+        >
+          <div className="truncate font-medium">{conv.title}</div>
+          <div className="text-[10px] opacity-60">{formatTime(conv.updated_at)}</div>
+        </button>
+      ))}
+    </div>
+  );
 }
 
 export default function AgentDetailPage() {
@@ -38,8 +148,12 @@ export default function AgentDetailPage() {
   const [error, setError] = useState<string | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [tokenError, setTokenError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<TabType>('details');
+  const [activeTab, setActiveTab] = useState<TabType>('chat'); // Default to chat
   const [selectedRunId, setSelectedRunId] = useState<string | null>(null);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null);
+  const [chatKey, setChatKey] = useState(0); // Key to force chat remount when conversation changes
+  const [deletedConversationId, setDeletedConversationId] = useState<string | null>(null);
 
   // Determine if agent supports attachments
   const supportsAttachments = useMemo(() => {
@@ -103,7 +217,7 @@ export default function AgentDetailPage() {
     } else if (tabParam) {
       setActiveTab(tabParam as TabType);
     } else {
-      setActiveTab('details');
+      setActiveTab('chat'); // Default to chat
     }
   }, [chatParam, tabParam]);
 
@@ -111,7 +225,7 @@ export default function AgentDetailPage() {
   const handleTabChange = (tab: TabType) => {
     setActiveTab(tab);
     setSelectedRunId(null); // Clear selected run when switching tabs
-    const newUrl = tab === 'details' 
+    const newUrl = tab === 'chat' 
       ? `/agent/${agentId}` 
       : `/agent/${agentId}?tab=${tab}`;
     router.push(newUrl, { scroll: false });
@@ -122,282 +236,357 @@ export default function AgentDetailPage() {
     setSelectedRunId(run.id);
   };
 
+  // Handle conversation selection - load into chat
+  const handleSelectConversation = (conversationId: string) => {
+    setSelectedConversationId(conversationId);
+    setChatKey(prev => prev + 1); // Force chat to remount with new conversation
+    setActiveTab('chat');
+    router.push(`/agent/${agentId}`, { scroll: false });
+  };
+
+  const navItems = [
+    { id: 'chat' as TabType, label: 'Chat', icon: MessageSquare },
+    { id: 'details' as TabType, label: 'Details', icon: Info },
+    { id: 'api_logs' as TabType, label: 'API Logs', icon: Terminal },
+    ...(agent?.workflow ? [{ id: 'workflow' as TabType, label: 'Workflow', icon: GitBranch }] : []),
+  ];
+
+  // Calculate height: 100vh minus header (h-16 = 4rem) minus nav (h-12 = 3rem) = 7rem total
   return (
-    <div className="max-w-7xl mx-auto px-4 py-8 space-y-6">
-      <div className="flex items-center justify-between">
-        <Link href="/" className="text-sm text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400">
-          ← Back to Agents
-        </Link>
-        <div className="flex items-center gap-3">
-          {agent && !agent.is_builtin && (
+    <div className="flex bg-gray-50 dark:bg-gray-900" style={{ height: 'calc(100vh - 7rem)' }}>
+      {/* Sidebar */}
+      <div 
+        className={`${
+          sidebarCollapsed ? 'w-16' : 'w-64'
+        } flex-shrink-0 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 flex flex-col transition-all duration-200`}
+      >
+        {/* Sidebar Header */}
+        <div className="p-4 border-b border-gray-200 dark:border-gray-700">
+          <div className="flex items-center justify-between">
+            <Link 
+              href="/" 
+              className={`flex items-center gap-2 text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors ${
+                sidebarCollapsed ? 'justify-center' : ''
+              }`}
+              title="Back to Agents"
+            >
+              <ChevronLeft className="w-5 h-5" />
+              {!sidebarCollapsed && <span className="text-sm">Agents</span>}
+            </Link>
+            <button
+              onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+              className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 rounded"
+              title={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+            >
+              <ChevronRight className={`w-4 h-4 transition-transform ${sidebarCollapsed ? '' : 'rotate-180'}`} />
+            </button>
+          </div>
+        </div>
+
+        {/* Agent Info */}
+        {agent && !sidebarCollapsed && (
+          <div className="p-4 border-b border-gray-200 dark:border-gray-700">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center flex-shrink-0">
+                <Bot className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <h2 className="font-semibold text-gray-900 dark:text-gray-100 truncate">
+                  {agent.display_name || agent.name}
+                </h2>
+                <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                  {agent.is_builtin ? 'Built-in' : 'Personal'} · {agent.model}
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Collapsed Agent Icon */}
+        {agent && sidebarCollapsed && (
+          <div className="p-4 border-b border-gray-200 dark:border-gray-700 flex justify-center">
+            <div className="w-10 h-10 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center" title={agent.display_name || agent.name}>
+              <Bot className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+            </div>
+          </div>
+        )}
+
+        {/* Navigation */}
+        <nav className="p-2 space-y-1">
+          {navItems.map((item) => {
+            const Icon = item.icon;
+            const isActive = activeTab === item.id;
+            return (
+              <button
+                key={item.id}
+                onClick={() => handleTabChange(item.id)}
+                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+                  isActive
+                    ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400'
+                    : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700/50'
+                } ${sidebarCollapsed ? 'justify-center' : ''}`}
+                title={sidebarCollapsed ? item.label : undefined}
+              >
+                <Icon className="w-5 h-5 flex-shrink-0" />
+                {!sidebarCollapsed && <span>{item.label}</span>}
+              </button>
+            );
+          })}
+        </nav>
+
+        {/* Conversations History in Sidebar */}
+        {!sidebarCollapsed && agent && token && (
+          <div className="flex-1 min-h-0 flex flex-col border-t border-gray-200 dark:border-gray-700">
+            <div className="px-3 py-2 flex items-center gap-2 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+              <Clock className="w-3 h-3" />
+              Recent Chats
+            </div>
+            <div className="flex-1 overflow-y-auto px-2 pb-2">
+              <SidebarConversationsList
+                agentId={agent.id}
+                token={token}
+                selectedId={selectedConversationId}
+                onSelect={handleSelectConversation}
+                deletedConversationId={deletedConversationId}
+              />
+            </div>
+          </div>
+        )}
+
+        {/* Edit Button */}
+        {agent && !agent.is_builtin && (
+          <div className="p-4 border-t border-gray-200 dark:border-gray-700">
             <Link
               href={`/agent/${agent.id}/edit`}
-              className="px-4 py-2 rounded-lg bg-green-600 dark:bg-green-700 text-white hover:bg-green-700 dark:hover:bg-green-600"
+              className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium bg-green-600 dark:bg-green-700 text-white hover:bg-green-700 dark:hover:bg-green-600 transition-colors ${
+                sidebarCollapsed ? 'justify-center' : ''
+              }`}
+              title={sidebarCollapsed ? 'Edit Agent' : undefined}
             >
-              Edit Agent
+              <Edit className="w-4 h-4" />
+              {!sidebarCollapsed && <span>Edit Agent</span>}
             </Link>
-          )}
-        </div>
+          </div>
+        )}
       </div>
 
-      {loading && <div className="text-gray-600 dark:text-gray-400">Loading…</div>}
-      {error && (
-        <div className="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg text-red-700 dark:text-red-400">
-          {error}
-        </div>
-      )}
-
-      {agent && (
-        <div className="space-y-6">
-          {/* Header - Only show on details tab */}
-          {activeTab === 'details' && (
-            <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-6">
-              <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">{agent.display_name || agent.name}</h1>
-              <p className="text-gray-600 dark:text-gray-400 mt-2">{agent.description || 'No description'}</p>
-            </div>
-          )}
-
-          {/* Tabs */}
-          <div className="border-b border-gray-200 dark:border-gray-700">
-            <nav className="flex space-x-8">
-              <button
-                onClick={() => handleTabChange('details')}
-                className={`py-4 px-1 border-b-2 font-medium text-sm ${
-                  activeTab === 'details'
-                    ? 'border-blue-500 text-blue-600 dark:text-blue-400'
-                    : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:border-gray-300 dark:hover:border-gray-600'
-                }`}
-              >
-                Details
-              </button>
-              <button
-                onClick={() => handleTabChange('chat')}
-                className={`py-4 px-1 border-b-2 font-medium text-sm ${
-                  activeTab === 'chat'
-                    ? 'border-blue-500 text-blue-600 dark:text-blue-400'
-                    : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:border-gray-300 dark:hover:border-gray-600'
-                }`}
-              >
-                Chat
-              </button>
-              <button
-                onClick={() => handleTabChange('conversations')}
-                className={`py-4 px-1 border-b-2 font-medium text-sm ${
-                  activeTab === 'conversations'
-                    ? 'border-blue-500 text-blue-600 dark:text-blue-400'
-                    : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:border-gray-300 dark:hover:border-gray-600'
-                }`}
-              >
-                Conversations
-              </button>
-              {agent.workflow && (
-                <button
-                  onClick={() => handleTabChange('workflow')}
-                  className={`py-4 px-1 border-b-2 font-medium text-sm ${
-                    activeTab === 'workflow'
-                      ? 'border-blue-500 text-blue-600 dark:text-blue-400'
-                      : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:border-gray-300 dark:hover:border-gray-600'
-                  }`}
-                >
-                  Workflow
-                </button>
-              )}
-            </nav>
+      {/* Main Content */}
+      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+        {loading && (
+          <div className="flex-1 flex items-center justify-center">
+            <div className="text-gray-600 dark:text-gray-400">Loading…</div>
           </div>
+        )}
+        
+        {error && (
+          <div className="p-4">
+            <div className="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg text-red-700 dark:text-red-400">
+              {error}
+            </div>
+          </div>
+        )}
 
-          {/* Tab Content */}
-          {activeTab === 'details' && (
-            <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-6 space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                <div className="text-gray-700 dark:text-gray-300">
-                  <span className="text-gray-500 dark:text-gray-400">ID:</span> {agent.id}
-                </div>
-                <div className="text-gray-700 dark:text-gray-300">
-                  <span className="text-gray-500 dark:text-gray-400">Model:</span> {agent.model}
-                </div>
-                <div className="text-gray-700 dark:text-gray-300">
-                  <span className="text-gray-500 dark:text-gray-400">Type:</span> {agent.is_builtin ? 'Built-in' : 'Personal'}
-                </div>
-                <div className="text-gray-700 dark:text-gray-300">
-                  <span className="text-gray-500 dark:text-gray-400">Status:</span> {agent.is_active ? 'Active' : 'Inactive'}
-                </div>
-              </div>
-
-              {/* Tools */}
-              {agent.tools && Object.keys(agent.tools).length > 0 && (
-                <div>
-                  <div className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Available Tools</div>
-                  <ToolBadgeList
-                    tools={(agent.tools.names || []).map((toolName: string) => ({
-                      name: toolName,
-                      is_builtin: true, // Assume built-in for now; could be enhanced with actual tool lookup
-                    }))}
-                    size="md"
-                    interactive={true}
-                  />
-                </div>
-              )}
-
-              {/* Scopes */}
-              {agent.scopes && agent.scopes.length > 0 && (
-                <div>
-                  <div className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Required Scopes</div>
-                  <div className="flex flex-wrap gap-2">
-                    {agent.scopes.map((scope: string) => (
-                      <span
-                        key={scope}
-                        className="px-3 py-1 text-xs bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-full"
+        {agent && !loading && (
+          <>
+            {/* Chat Tab - Full height, pinned input */}
+            {activeTab === 'chat' && (
+              <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
+                {tokenError === 'not_authenticated' ? (
+                  <div className="flex-1 flex items-center justify-center">
+                    <div className="text-center max-w-md px-6">
+                      <div className="text-6xl mb-4">🔒</div>
+                      <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-2">
+                        Authentication Required
+                      </h3>
+                      <p className="text-gray-600 dark:text-gray-400 mb-4">
+                        You need to be authenticated to use the chat feature. Please log in through the AI Portal first.
+                      </p>
+                      <a
+                        href={process.env.NEXT_PUBLIC_AI_PORTAL_URL || 'http://localhost:3000'}
+                        className="inline-block px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
                       >
-                        {scope}
-                      </span>
-                    ))}
+                        Go to AI Portal
+                      </a>
+                    </div>
                   </div>
-                </div>
-              )}
-
-              <div>
-                <div className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Instructions</div>
-                <pre className="whitespace-pre-wrap text-sm bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg p-4 max-h-96 overflow-y-auto text-gray-900 dark:text-gray-100">
-                  {agent.instructions}
-                </pre>
+                ) : tokenError === 'token_fetch_failed' ? (
+                  <div className="flex-1 flex items-center justify-center">
+                    <div className="text-center max-w-md px-6">
+                      <div className="text-6xl mb-4">⚠️</div>
+                      <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-2">
+                        Unable to Load Chat
+                      </h3>
+                      <p className="text-gray-600 dark:text-gray-400 mb-4">
+                        Failed to retrieve authentication token. Please try refreshing the page.
+                      </p>
+                      <button
+                        onClick={() => window.location.reload()}
+                        className="inline-block px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
+                      >
+                        Refresh Page
+                      </button>
+                    </div>
+                  </div>
+                ) : !token ? (
+                  <div className="flex-1 flex items-center justify-center">
+                    <div className="text-center">
+                      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                      <p className="text-gray-600 dark:text-gray-400">Loading chat...</p>
+                    </div>
+                  </div>
+                ) : (
+                  <SimpleChatInterface
+                    key={chatKey}
+                    token={token}
+                    agentUrl={process.env.NEXT_PUBLIC_AGENT_API_URL}
+                    agentId={agent.id}
+                    model={agent.model}
+                    enableWebSearch={enableWebSearch}
+                    enableDocSearch={enableDocSearch}
+                    allowAttachments={supportsAttachments}
+                    placeholder={`Chat with ${agent.display_name || agent.name}...`}
+                    welcomeMessage={selectedConversationId ? undefined : `Hi! I'm **${agent.display_name || agent.name}**.\n\n${agent.description || 'How can I help you today?'}`}
+                    useAgenticStreaming={true}
+                    initialConversationId={selectedConversationId || undefined}
+                    onConversationDeleted={(id) => {
+                      setDeletedConversationId(id);
+                      // Clear selected if it was the deleted one
+                      if (selectedConversationId === id) {
+                        setSelectedConversationId(null);
+                      }
+                    }}
+                  />
+                )}
               </div>
-            </div>
-          )}
+            )}
 
-          {activeTab === 'chat' && (
-            <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden" style={{ height: 'calc(100vh - 280px)' }}>
-              {tokenError === 'not_authenticated' ? (
-                <div className="flex items-center justify-center h-full">
-                  <div className="text-center max-w-md px-6">
-                    <div className="text-6xl mb-4">🔒</div>
-                    <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-2">
-                      Authentication Required
-                    </h3>
-                    <p className="text-gray-600 dark:text-gray-400 mb-4">
-                      You need to be authenticated to use the chat feature. Please log in through the AI Portal first.
-                    </p>
-                    <a
-                      href={process.env.NEXT_PUBLIC_AI_PORTAL_URL || 'http://localhost:3000'}
-                      className="inline-block px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
-                    >
-                      Go to AI Portal
-                    </a>
-                  </div>
-                </div>
-              ) : tokenError === 'token_fetch_failed' ? (
-                <div className="flex items-center justify-center h-full">
-                  <div className="text-center max-w-md px-6">
-                    <div className="text-6xl mb-4">⚠️</div>
-                    <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-2">
-                      Unable to Load Chat
-                    </h3>
-                    <p className="text-gray-600 dark:text-gray-400 mb-4">
-                      Failed to retrieve authentication token. Please try refreshing the page.
-                    </p>
-                    <button
-                      onClick={() => window.location.reload()}
-                      className="inline-block px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
-                    >
-                      Refresh Page
-                    </button>
-                  </div>
-                </div>
-              ) : !token ? (
-                <div className="flex items-center justify-center h-full">
-                  <div className="text-center">
-                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-                    <p className="text-gray-600 dark:text-gray-400">Loading chat...</p>
-                  </div>
-                </div>
-              ) : (
-                <SimpleChatInterface
-                  token={token}
-                  agentUrl={process.env.NEXT_PUBLIC_AGENT_API_URL}
-                  agentId={agent.id}
-                  model={agent.model}
-                  enableWebSearch={enableWebSearch}
-                  enableDocSearch={enableDocSearch}
-                  allowAttachments={supportsAttachments}
-                  placeholder={`Chat with ${agent.display_name || agent.name}...`}
-                  welcomeMessage={`Hi! I'm **${agent.display_name || agent.name}**.\n\n${agent.description || 'How can I help you today?'}`}
-                />
-              )}
-            </div>
-          )}
-
-          {activeTab === 'conversations' && (
-            <div className="space-y-6">
-              {!token ? (
-                <div className="flex items-center justify-center py-8">
-                  <div className="text-center max-w-md px-6">
-                    <div className="text-6xl mb-4">🔒</div>
-                    <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-2">
-                      Authentication Required
-                    </h3>
-                    <p className="text-gray-600 dark:text-gray-400 mb-4">
-                      You need to be authenticated to view conversation history.
-                    </p>
-                  </div>
-                </div>
-              ) : selectedRunId ? (
-                <RunDetailPanel 
-                  runId={selectedRunId}
-                  token={token}
-                  onClose={() => setSelectedRunId(null)} 
-                />
-              ) : (
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  {/* Chat Conversations Section */}
+            {/* Details Tab */}
+            {activeTab === 'details' && (
+              <div className="flex-1 overflow-y-auto p-6">
+                <div className="max-w-4xl mx-auto space-y-6">
+                  {/* Header */}
                   <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-6">
-                    <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4 flex items-center gap-2">
-                      <span>💬</span>
-                      Chat Conversations
-                    </h3>
-                    <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
-                      Conversations where this agent was used via chat routing.
-                    </p>
-                    <ConversationsList 
-                      agentId={agent.id}
-                      token={token}
-                      onSelectConversation={(id) => {
-                        // Could navigate to conversation detail or expand inline
-                        console.log('Selected conversation:', id);
-                      }}
-                    />
+                    <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">{agent.display_name || agent.name}</h1>
+                    <p className="text-gray-600 dark:text-gray-400 mt-2">{agent.description || 'No description'}</p>
                   </div>
 
-                  {/* API Runs Section */}
-                  <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-6">
-                    <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4 flex items-center gap-2">
-                      <span>🚀</span>
-                      API Runs
-                    </h3>
-                    <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
-                      Direct executions of this agent via the API.
-                    </p>
-                    <RunsList 
-                      agentId={agent.id}
-                      token={token}
-                      onSelectRun={handleSelectRun}
-                    />
+                  {/* Details */}
+                  <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-6 space-y-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                      <div className="text-gray-700 dark:text-gray-300">
+                        <span className="text-gray-500 dark:text-gray-400">ID:</span> {agent.id}
+                      </div>
+                      <div className="text-gray-700 dark:text-gray-300">
+                        <span className="text-gray-500 dark:text-gray-400">Model:</span> {agent.model}
+                      </div>
+                      <div className="text-gray-700 dark:text-gray-300">
+                        <span className="text-gray-500 dark:text-gray-400">Type:</span> {agent.is_builtin ? 'Built-in' : 'Personal'}
+                      </div>
+                      <div className="text-gray-700 dark:text-gray-300">
+                        <span className="text-gray-500 dark:text-gray-400">Status:</span> {agent.is_active ? 'Active' : 'Inactive'}
+                      </div>
+                    </div>
+
+                    {/* Tools */}
+                    {agent.tools && Object.keys(agent.tools).length > 0 && (
+                      <div>
+                        <div className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Available Tools</div>
+                        <ToolBadgeList
+                          tools={(agent.tools.names || []).map((toolName: string) => ({
+                            name: toolName,
+                            is_builtin: true,
+                          }))}
+                          size="md"
+                          interactive={true}
+                        />
+                      </div>
+                    )}
+
+                    {/* Scopes */}
+                    {agent.scopes && agent.scopes.length > 0 && (
+                      <div>
+                        <div className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Required Scopes</div>
+                        <div className="flex flex-wrap gap-2">
+                          {agent.scopes.map((scope: string) => (
+                            <span
+                              key={scope}
+                              className="px-3 py-1 text-xs bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-full"
+                            >
+                              {scope}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    <div>
+                      <div className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Instructions</div>
+                      <pre className="whitespace-pre-wrap text-sm bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg p-4 max-h-96 overflow-y-auto text-gray-900 dark:text-gray-100">
+                        {agent.instructions}
+                      </pre>
+                    </div>
                   </div>
                 </div>
-              )}
-            </div>
-          )}
-
-          {activeTab === 'workflow' && agent.workflow && (
-            <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-6">
-              <div className="text-gray-600 dark:text-gray-400">
-                Workflow view coming soon. Workflow ID: {typeof agent.workflow === 'object' ? JSON.stringify(agent.workflow) : agent.workflow}
               </div>
-            </div>
-          )}
-        </div>
-      )}
+            )}
+
+            {/* API Logs Tab */}
+            {activeTab === 'api_logs' && (
+              <div className="flex-1 overflow-y-auto p-6">
+                <div className="max-w-4xl mx-auto">
+                  {!token ? (
+                    <div className="flex items-center justify-center py-8">
+                      <div className="text-center max-w-md px-6">
+                        <div className="text-6xl mb-4">🔒</div>
+                        <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-2">
+                          Authentication Required
+                        </h3>
+                        <p className="text-gray-600 dark:text-gray-400 mb-4">
+                          You need to be authenticated to view API logs.
+                        </p>
+                      </div>
+                    </div>
+                  ) : selectedRunId ? (
+                    <RunDetailPanel 
+                      runId={selectedRunId}
+                      token={token}
+                      onClose={() => setSelectedRunId(null)} 
+                    />
+                  ) : (
+                    <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-6">
+                      <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4 flex items-center gap-2">
+                        <Terminal className="w-5 h-5" />
+                        API Runs
+                      </h3>
+                      <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+                        Direct executions of this agent via the API. Click on a run to see detailed logs.
+                      </p>
+                      <RunsList 
+                        agentId={agent.id}
+                        token={token}
+                        onSelectRun={handleSelectRun}
+                      />
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Workflow Tab */}
+            {activeTab === 'workflow' && agent.workflow && (
+              <div className="flex-1 overflow-y-auto p-6">
+                <div className="max-w-4xl mx-auto">
+                  <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-6">
+                    <div className="text-gray-600 dark:text-gray-400">
+                      Workflow view coming soon. Workflow ID: {typeof agent.workflow === 'object' ? JSON.stringify(agent.workflow) : agent.workflow}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+          </>
+        )}
+      </div>
     </div>
   );
 }
-
-
-

@@ -16,8 +16,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Agent Client",
-  description: "Busibox Agent Client",
+  title: "Agent Manager",
+  description: "Agent Manager",
 };
 
 export default function RootLayout({

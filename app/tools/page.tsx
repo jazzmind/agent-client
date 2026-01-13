@@ -1,7 +1,8 @@
 /**
  * Tools Management Page
  * 
- * View and configure available tools including API keys and provider settings
+ * View and configure available tools including API keys, provider settings,
+ * and scoped configurations (global, agent-specific, or personal).
  */
 
 'use client';
@@ -9,7 +10,6 @@
 import React, { useEffect, useState } from 'react';
 import { Tool } from '@/lib/types';
 import { ToolList } from '@/components/tools/ToolList';
-import { ToolConfigModal } from '@/components/tools/ToolConfigModal';
 import { useAuth } from '@/components/auth/AuthContext';
 
 export default function ToolsPage() {
@@ -17,8 +17,6 @@ export default function ToolsPage() {
   const [tools, setTools] = useState<Tool[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [selectedTool, setSelectedTool] = useState<Tool | null>(null);
-  const [isConfigModalOpen, setIsConfigModalOpen] = useState(false);
 
   // Wait for auth to be ready before fetching data
   useEffect(() => {
@@ -32,7 +30,7 @@ export default function ToolsPage() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch('/api/tools');
+      const res = await fetch('/api/tools', { credentials: 'include' });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
         throw new Error(data.error || `Failed to load tools (${res.status})`);
@@ -48,38 +46,30 @@ export default function ToolsPage() {
     }
   }
 
-  function handleConfigure(tool: Tool) {
-    setSelectedTool(tool);
-    setIsConfigModalOpen(true);
-  }
-
-  function handleCloseModal() {
-    setIsConfigModalOpen(false);
-    setSelectedTool(null);
-  }
-
-  async function handleSaveConfig(toolId: string, config: any) {
+  // Quick toggle from the card (uses personal scope by default)
+  async function handleQuickToggle(tool: Tool, enabled: boolean) {
     try {
-      const res = await fetch(`/api/tools/${toolId}/config`, {
+      const res = await fetch(`/api/tools/${tool.id}/config`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(config),
+        credentials: 'include',
+        body: JSON.stringify({
+          is_enabled: enabled,
+          scope: 'personal',
+        }),
       });
 
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        throw new Error(data.error || 'Failed to save configuration');
+        throw new Error(data.error || 'Failed to toggle tool');
       }
 
-      // Show success message (you could add a toast notification here)
-      console.log('[Tools] Configuration saved successfully');
-      
-      // Reload tools to reflect any changes
+      console.log('[Tools] Tool toggled successfully');
       await loadTools();
     } catch (e: any) {
-      console.error('[Tools] Failed to save configuration:', e);
+      console.error('[Tools] Failed to toggle tool:', e);
       throw e;
     }
   }
@@ -153,8 +143,6 @@ export default function ToolsPage() {
             </h3>
             <p className="text-sm text-blue-800 dark:text-blue-300">
               Click "Configure" on any tool to set up API keys and enable/disable providers. 
-              For web search tools, you can configure multiple providers (DuckDuckGo, Tavily, Perplexity, Brave). 
-              Free providers like DuckDuckGo work without API keys.
             </p>
           </div>
         </div>
@@ -163,16 +151,8 @@ export default function ToolsPage() {
       {/* Tool list */}
       <ToolList 
         tools={tools} 
-        onConfigure={handleConfigure}
+        onToggleEnabled={handleQuickToggle}
         isLoading={loading} 
-      />
-
-      {/* Configuration Modal */}
-      <ToolConfigModal
-        tool={selectedTool}
-        isOpen={isConfigModalOpen}
-        onClose={handleCloseModal}
-        onSave={handleSaveConfig}
       />
     </div>
   );

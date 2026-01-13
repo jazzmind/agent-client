@@ -34,3 +34,9 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+/* Hide footer on pages that need full height (e.g., agent chat) */
+body.hide-footer footer,
+body.hide-footer [data-version-bar] {
+  display: none !important;
+}

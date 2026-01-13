@@ -27,7 +27,13 @@ export async function POST(
       );
     }
 
-    const result = await agentClient.testTool(toolId, body.input, auth.agentApiToken);
+    // Pass providers config if provided
+    const result = await agentClient.testTool(
+      toolId, 
+      body.input, 
+      auth.agentApiToken,
+      body.providers
+    );
     return NextResponse.json(result);
   } catch (error: any) {
     console.error('[API] Tool test error:', error);

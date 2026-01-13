@@ -108,7 +108,7 @@ export default function DashboardPage() {
           <div className="font-medium">Failed to load agents</div>
           <div className="text-sm mt-1">{error}</div>
           <div className="text-sm mt-2">
-            If you’re not logged in, go back to the AI Portal and authenticate, then reopen Agent Client.
+            If you’re not logged in, go back to the AI Portal and authenticate, then reopen Agent Manager.
           </div>
         </div>
       )}

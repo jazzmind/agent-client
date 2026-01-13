@@ -5,8 +5,8 @@ import { BusiboxApiProvider, CustomizationProvider, ThemeProvider } from '@jazzm
 import type { PortalCustomization } from '@jazzmind/busibox-app';
 
 const defaultCustomization: PortalCustomization = {
-  companyName: 'Busibox',
-  siteName: 'Agent Client',
+  companyName: 'Maigent',
+  siteName: 'Agent Manager',
   slogan: 'Admin & Simulator',
   logoUrl: null,
   faviconUrl: null,

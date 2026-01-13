@@ -230,28 +230,38 @@ export function shouldRefreshToken(token: string, bufferMinutes: number = 5): bo
 }
 
 /**
- * Refresh token by calling auth service
- * Note: Implementation depends on Busibox auth system
+ * Refresh token by calling the local auth refresh endpoint
+ * 
+ * This calls /api/auth/refresh which exchanges the SSO token for a fresh
+ * authz token from the authz service.
+ * 
+ * @param currentToken - The current token (used for Authorization header)
+ * @returns New token string, or null if refresh failed
  */
 export async function refreshToken(currentToken: string): Promise<string | null> {
   try {
-    // TODO: Implement based on Busibox auth system
-    // This should call the auth service's refresh endpoint
-    
     const response = await fetch('/api/auth/refresh', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${currentToken}`,
         'Content-Type': 'application/json',
       },
+      credentials: 'include', // Include cookies for SSO token
     });
     
     if (!response.ok) {
+      const data = await response.json().catch(() => ({}));
+      
+      // If re-authentication is required, return null to trigger redirect
+      if (data.requiresReauth) {
+        console.warn('[AUTH] Token refresh requires re-authentication');
+      }
+      
       return null;
     }
     
     const data = await response.json();
-    return data.access_token || data.token || null;
+    return data.token || null;
   } catch (error) {
     console.error('Failed to refresh token:', error);
     return null;

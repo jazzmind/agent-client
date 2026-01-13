@@ -222,12 +222,18 @@ export interface ToolTestResult {
 export async function testTool(
   toolId: string,
   input: Record<string, any>,
-  token?: string
+  token?: string,
+  providers?: Record<string, any>
 ): Promise<ToolTestResult> {
+  const body: { input: Record<string, any>; providers?: Record<string, any> } = { input };
+  if (providers) {
+    body.providers = providers;
+  }
+  
   const response = await fetch(`${AGENT_API_URL}/agents/tools/${toolId}/test`, {
     method: 'POST',
     headers: getAgentApiHeaders(token),
-    body: JSON.stringify({ input }),
+    body: JSON.stringify(body),
   });
   return handleResponse(response) as Promise<ToolTestResult>;
 }

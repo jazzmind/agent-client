@@ -1,7 +1,7 @@
 /**
  * Tool Detail Page
  * 
- * View detailed information about a specific tool and test it
+ * View detailed information about a specific tool, configure it, and test it
  */
 
 'use client';
@@ -10,8 +10,10 @@ import React, { useEffect, useState, use } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Tool } from '@/lib/types';
 import { ToolPlayground } from '@/components/tools/ToolPlayground';
+import { ToolConfigPanel } from '@/components/tools/ToolConfigPanel';
+import { Settings } from 'lucide-react';
 
-type TabType = 'details' | 'test';
+type TabType = 'details' | 'configure' | 'test';
 
 export default function ToolDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = use(params);
@@ -26,14 +28,17 @@ export default function ToolDetailPage({ params }: { params: Promise<{ id: strin
   const tabParam = searchParams.get('tab');
   const [activeTab, setActiveTab] = useState<TabType>(() => {
     if (tabParam === 'test') return 'test';
+    if (tabParam === 'configure') return 'configure';
     return 'details';
   });
 
   // Sync tab with URL
   useEffect(() => {
-    if (tabParam === 'test' && activeTab !== 'test') {
+    if (tabParam === 'test') {
       setActiveTab('test');
-    } else if (tabParam !== 'test' && activeTab === 'test') {
+    } else if (tabParam === 'configure') {
+      setActiveTab('configure');
+    } else {
       setActiveTab('details');
     }
   }, [tabParam]);
@@ -167,6 +172,17 @@ export default function ToolDetailPage({ params }: { params: Promise<{ id: strin
             Details
           </button>
           <button
+            onClick={() => handleTabChange('configure')}
+            className={`py-3 px-1 border-b-2 font-medium text-sm transition-colors flex items-center gap-2 ${
+              activeTab === 'configure'
+                ? 'border-blue-500 text-blue-600 dark:text-blue-400'
+                : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:border-gray-300'
+            }`}
+          >
+            <Settings className="w-4 h-4" />
+            Configure
+          </button>
+          <button
             onClick={() => handleTabChange('test')}
             className={`py-3 px-1 border-b-2 font-medium text-sm transition-colors flex items-center gap-2 ${
               activeTab === 'test'
@@ -257,6 +273,10 @@ export default function ToolDetailPage({ params }: { params: Promise<{ id: strin
             </div>
           )}
         </>
+      )}
+
+      {activeTab === 'configure' && (
+        <ToolConfigPanel tool={tool} isAdmin={true} />
       )}
 
       {activeTab === 'test' && (

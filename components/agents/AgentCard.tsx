@@ -22,7 +22,8 @@ interface AgentCardProps {
 }
 
 export function AgentCard({ agent, onTest, onDelete, className = '' }: AgentCardProps) {
-  const toolCount = Object.keys(agent.tools || {}).length;
+  // Get actual tool count from tools.names array
+  const toolCount = agent.tools?.names?.length || 0;
   const isPersonal = agent.is_personal;
   const isBuiltin = agent.is_builtin;
 
@@ -74,7 +75,7 @@ export function AgentCard({ agent, onTest, onDelete, className = '' }: AgentCard
         {/* Actions */}
         <div className="flex items-center space-x-2 ml-4">
           <Link
-            href={`/agent/${agent.id}`}
+            href={`/agent/${agent.id}?tab=details`}
             className="p-2 text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded transition-colors"
             title="View details"
           >
@@ -141,13 +142,12 @@ export function AgentCard({ agent, onTest, onDelete, className = '' }: AgentCard
         </div>
       )}
 
-      {/* Timestamps */}
-      <div className="mt-3 pt-3 border-t border-gray-100 dark:border-gray-700 text-xs text-gray-400 dark:text-gray-500">
-        <div>Created: {new Date(agent.created_at).toLocaleDateString()}</div>
-        {agent.updated_at !== agent.created_at && (
+      {/* Timestamps - only show for non-builtin agents */}
+      {!isBuiltin && agent.updated_at && (
+        <div className="mt-3 pt-3 border-t border-gray-100 dark:border-gray-700 text-xs text-gray-400 dark:text-gray-500">
           <div>Updated: {new Date(agent.updated_at).toLocaleDateString()}</div>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -83,7 +83,7 @@ function AppShellContent({ children, basePath }: { children: React.ReactNode; ba
           </Link>
         </div>
       </nav>
-      <main className="min-h-screen">{children}</main>
+      <main className="flex-1">{children}</main>
       <Footer />
       <VersionBar />
     </>

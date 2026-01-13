@@ -13,6 +13,7 @@ import { ToolCard } from './ToolCard';
 interface ToolListProps {
   tools: Tool[];
   onConfigure?: (tool: Tool) => void;
+  onToggleEnabled?: (tool: Tool, enabled: boolean) => Promise<void>;
   isLoading?: boolean;
   className?: string;
 }
@@ -20,6 +21,7 @@ interface ToolListProps {
 export function ToolList({
   tools,
   onConfigure,
+  onToggleEnabled,
   isLoading = false,
   className = '',
 }: ToolListProps) {
@@ -106,6 +108,7 @@ export function ToolList({
               key={tool.id}
               tool={tool}
               onConfigure={onConfigure}
+              onToggleEnabled={onToggleEnabled}
             />
           ))}
         </div>

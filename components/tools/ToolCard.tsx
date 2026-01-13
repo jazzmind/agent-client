@@ -1,14 +1,16 @@
 /**
  * ToolCard Component
  * 
- * Displays a single tool with its information and configuration status
+ * Displays a single tool with its information and configuration status.
+ * Includes enable/disable toggle and configuration options.
  */
 
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import Link from 'next/link';
 import { Tool } from '@/lib/types';
+import { Settings, Play, ToggleLeft, ToggleRight } from 'lucide-react';
 
 // Tool category definitions
 export type ToolCategory = 'built-in' | 'custom' | 'mcp' | 'coming-soon';
@@ -133,18 +135,41 @@ function getToolIcon(toolName: string): React.ReactNode {
 
 interface ToolCardProps {
   tool: Tool;
-  onConfigure?: (tool: Tool) => void;
+  onConfigure?: (tool: Tool) => void; // Deprecated - use link to configure tab instead
+  onToggleEnabled?: (tool: Tool, enabled: boolean) => Promise<void>;
   className?: string;
 }
 
-export function ToolCard({ tool, onConfigure, className = '' }: ToolCardProps) {
+export function ToolCard({ tool, onConfigure, onToggleEnabled, className = '' }: ToolCardProps) {
+  const [isToggling, setIsToggling] = useState(false);
+  const [localEnabled, setLocalEnabled] = useState(tool.is_active);
+  
   const category = getToolCategory(tool);
   const categoryInfo = TOOL_CATEGORIES[category];
   const isComingSoon = category === 'coming-soon';
   
+  const handleToggle = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!onToggleEnabled || isToggling) return;
+    
+    const newEnabled = !localEnabled;
+    setLocalEnabled(newEnabled);
+    setIsToggling(true);
+    
+    try {
+      await onToggleEnabled(tool, newEnabled);
+    } catch (error) {
+      // Revert on error
+      setLocalEnabled(!newEnabled);
+      console.error('Failed to toggle tool:', error);
+    } finally {
+      setIsToggling(false);
+    }
+  };
+  
   return (
     <div
-      className={`bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-6 hover:shadow-md transition-shadow ${isComingSoon ? 'opacity-60' : ''} ${className}`}
+      className={`bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-6 hover:shadow-md transition-shadow ${isComingSoon ? 'opacity-60' : ''} ${!localEnabled && !isComingSoon ? 'opacity-75' : ''} ${className}`}
     >
       {/* Header */}
       <div className="flex items-start justify-between mb-3">
@@ -167,7 +192,27 @@ export function ToolCard({ tool, onConfigure, className = '' }: ToolCardProps) {
           <span className={`text-xs px-2 py-1 rounded-full ${categoryInfo.bgColor} ${categoryInfo.darkBgColor} ${categoryInfo.color}`}>
             {categoryInfo.label}
           </span>
-          {!isComingSoon && (
+          {/* Enable/Disable Toggle */}
+          {!isComingSoon && onToggleEnabled && (
+            <button
+              onClick={handleToggle}
+              disabled={isToggling}
+              className={`flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-medium transition-colors ${
+                localEnabled
+                  ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 hover:bg-green-200 dark:hover:bg-green-900/50'
+                  : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600'
+              } ${isToggling ? 'opacity-50 cursor-wait' : 'cursor-pointer'}`}
+              title={localEnabled ? 'Click to disable' : 'Click to enable'}
+            >
+              {localEnabled ? (
+                <ToggleRight className="w-4 h-4" />
+              ) : (
+                <ToggleLeft className="w-4 h-4" />
+              )}
+              {localEnabled ? 'Enabled' : 'Disabled'}
+            </button>
+          )}
+          {!isComingSoon && !onToggleEnabled && (
             <span
               className={`text-xs px-2 py-1 rounded-full ${
                 tool.is_active
@@ -205,14 +250,13 @@ export function ToolCard({ tool, onConfigure, className = '' }: ToolCardProps) {
           </span>
         ) : (
           <>
-            {onConfigure && (
-              <button
-                onClick={() => onConfigure(tool)}
-                className="text-sm font-medium text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300"
-              >
-                Configure
-              </button>
-            )}
+            <Link
+              href={`/tools/${tool.id}?tab=configure`}
+              className="text-sm font-medium text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 flex items-center gap-1"
+            >
+              <Settings className="w-3.5 h-3.5" />
+              Configure
+            </Link>
             <Link
               href={`/tools/${tool.id}`}
               className="text-sm font-medium text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100"
@@ -223,9 +267,7 @@ export function ToolCard({ tool, onConfigure, className = '' }: ToolCardProps) {
               href={`/tools/${tool.id}?tab=test`}
               className="text-sm font-medium text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300 flex items-center gap-1"
             >
-              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
-              </svg>
+              <Play className="w-3.5 h-3.5" />
               Test
             </Link>
           </>

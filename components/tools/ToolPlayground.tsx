@@ -6,7 +6,7 @@
 
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Tool, ToolSchema } from '@/lib/types';
 
 interface ToolPlaygroundProps {
@@ -21,6 +21,16 @@ interface ToolTestResult {
   execution_time_ms: number;
   tool_name: string;
   input_used: Record<string, any>;
+  providers_used?: string[];
+}
+
+interface ToolConfig {
+  providers?: {
+    [key: string]: {
+      enabled: boolean;
+      api_key?: string;
+    };
+  };
 }
 
 // Sample inputs for common built-in tools
@@ -39,6 +49,28 @@ export function ToolPlayground({ tool, token }: ToolPlaygroundProps) {
   const [result, setResult] = useState<ToolTestResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [toolConfig, setToolConfig] = useState<ToolConfig | null>(null);
+
+  // Load tool configuration on mount
+  useEffect(() => {
+    async function loadConfig() {
+      try {
+        const headers: Record<string, string> = {};
+        if (token) {
+          headers['Authorization'] = `Bearer ${token}`;
+        }
+        const res = await fetch(`/api/tools/${tool.id}/config`, { headers });
+        if (res.ok) {
+          const config = await res.json();
+          setToolConfig(config);
+        }
+      } catch (e) {
+        // Config not found is fine, use defaults
+        console.log('[ToolPlayground] No config found, using defaults');
+      }
+    }
+    loadConfig();
+  }, [tool.id, token]);
 
   // Extract input properties from schema
   const inputProperties = useMemo(() => {
@@ -79,11 +111,20 @@ export function ToolPlayground({ tool, token }: ToolPlaygroundProps) {
         headers['Authorization'] = `Bearer ${token}`;
       }
 
+      // Include provider config if available (for web_search and similar tools)
+      const requestBody: { input: Record<string, any>; providers?: Record<string, any> } = { 
+        input: inputs 
+      };
+      
+      if (toolConfig?.providers) {
+        requestBody.providers = toolConfig.providers;
+      }
+
       const response = await fetch(`/api/tools/${tool.id}/test`, {
         method: 'POST',
         headers,
         credentials: 'include',
-        body: JSON.stringify({ input: inputs }),
+        body: JSON.stringify(requestBody),
       });
 
       if (!response.ok) {
@@ -344,6 +385,11 @@ export function ToolPlayground({ tool, token }: ToolPlaygroundProps) {
               >
                 {result.success ? 'Success' : 'Failed'}
               </span>
+              {result.providers_used && result.providers_used.length > 0 && (
+                <span className="text-xs text-gray-500 dark:text-gray-400">
+                  via {result.providers_used.join(', ')}
+                </span>
+              )}
             </div>
             <div className="text-sm text-gray-500 dark:text-gray-400">
               {result.execution_time_ms}ms
