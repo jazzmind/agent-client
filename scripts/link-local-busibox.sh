@@ -53,8 +53,8 @@ npm link
 echo -e "${GREEN}✓ Global link created${NC}"
 echo ""
 
-# Step 3: Link in ai-portal
-echo -e "${YELLOW}Step 3: Linking @jazzmind/busibox-app in ai-portal...${NC}"
+# Step 3: Link in agent-manager
+echo -e "${YELLOW}Step 3: Linking @jazzmind/busibox-app in agent-manager...${NC}"
 cd "$PROJECT_ROOT"
 npm link @jazzmind/busibox-app
 echo -e "${GREEN}✓ Local link established${NC}"
@@ -64,7 +64,7 @@ echo -e "${GREEN}✅ Setup complete!${NC}"
 echo ""
 echo "Local development mode active:"
 echo "  • busibox-app using src/ files (instant changes!)"
-echo "  • ai-portal linked to local busibox-app"
+echo "  • agent-manager linked to local busibox-app"
 echo ""
 echo "Next steps:"
 echo "  1. Restart your dev server: npm run dev"

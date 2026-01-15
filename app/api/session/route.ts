@@ -1,14 +1,30 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getTokenFromRequest, getUserRolesFromToken, parseJWTPayload, getUserIdFromToken, isTokenExpired } from '@/lib/auth-helper';
+import { getTokenFromRequest, getSessionFromRequest, getUserRolesFromToken, parseJWTPayload, getUserIdFromToken, isTokenExpired } from '@/lib/auth-helper';
 
 /**
  * GET /api/session
  *
  * Lightweight session endpoint for UI chrome (navbar/user dropdown).
- * Derives user identity from the existing JWT (cookie or Authorization header).
- * Falls back to TEST_USER credentials if configured (local dev).
+ * Derives user identity from:
+ * 1. agent-client-session cookie (set by SSO flow)
+ * 2. JWT token (cookie or Authorization header)
+ * 3. TEST_USER env vars (local dev fallback)
  */
 export async function GET(request: NextRequest) {
+  // First check for agent-client-session cookie (set by SSO flow)
+  const ssoSession = getSessionFromRequest(request);
+  if (ssoSession) {
+    return NextResponse.json({
+      user: {
+        id: ssoSession.userId,
+        email: ssoSession.email,
+        status: 'ACTIVE',
+        roles: ssoSession.roles,
+      },
+      isAuthenticated: true,
+    });
+  }
+  
   const token = getTokenFromRequest(request);
   
   // If no token, check for test user (local dev)

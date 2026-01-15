@@ -180,7 +180,8 @@ export function ToolConfigPanel({ tool, isAdmin = false }: ToolConfigPanelProps)
   }
 
   function getProvidersForTool(tool: Tool) {
-    if (tool.name.toLowerCase().includes('search') || tool.entrypoint.includes('web_search')) {
+    // Only show providers for web_search, not document_search
+    if (tool.name === 'web_search' || tool.entrypoint.includes('web_search')) {
       return PROVIDER_CONFIGS.web_search || [];
     }
     return [];

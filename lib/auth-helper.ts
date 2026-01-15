@@ -44,6 +44,28 @@ export function getTokenFromRequest(request: NextRequest): string | undefined {
 }
 
 /**
+ * Get session data from agent-client-session cookie
+ * This is set by the SSO flow
+ */
+export function getSessionFromRequest(request: NextRequest): { userId: string; email: string; roles: string[] } | null {
+  const sessionCookie = request.cookies.get('agent-client-session');
+  if (!sessionCookie) {
+    return null;
+  }
+  
+  try {
+    const session = JSON.parse(sessionCookie.value);
+    return {
+      userId: session.userId || session.user_id,
+      email: session.email,
+      roles: session.roles || [],
+    };
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Extract token from client-side (browser)
  * Note: httpOnly cookies are not accessible from JavaScript
  */

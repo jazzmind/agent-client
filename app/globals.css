@@ -1,5 +1,12 @@
 @import "tailwindcss";
 
+/* Scan busibox-app package for Tailwind classes (not scanned by default since it's in node_modules) */
+/* Include both dist (published) and src (npm linked local dev) */
+@source "../node_modules/@jazzmind/busibox-app/dist";
+@source "../node_modules/@jazzmind/busibox-app/src";
+
+@plugin "@tailwindcss/typography";
+
 @theme {
   --color-background: var(--background);
   --color-foreground: var(--foreground);

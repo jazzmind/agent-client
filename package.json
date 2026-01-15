@@ -19,6 +19,7 @@
   },
   "dependencies": {
     "@jazzmind/busibox-app": "^2.1.7",
+    "@tailwindcss/typography": "^0.5.19",
     "@types/dagre": "^0.7.53",
     "dagre": "^0.8.5",
     "jose": "^6.1.2",
