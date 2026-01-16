@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState, useMemo } from 'react';
 import Link from 'next/link';
 import { FetchWrapper, Footer, VersionBar } from '@jazzmind/busibox-app';
 import type { SessionData } from '@jazzmind/busibox-app';
@@ -8,7 +8,7 @@ import { AuthProvider, useAuth } from '@/components/auth/AuthContext';
 import { CustomHeader } from '@/components/CustomHeader';
 
 function AppShellContent({ children, basePath }: { children: React.ReactNode; basePath: string }) {
-  const { isReady, refreshKey } = useAuth();
+  const { isReady, refreshKey, authState, redirectToPortal, logout } = useAuth();
   const [session, setSession] = useState<SessionData>({ user: null, isAuthenticated: false });
   // Use absolute URL to avoid basePath prepending - just go to /portal (home is default)
   const portalUrl = process.env.NEXT_PUBLIC_AI_PORTAL_URL 
@@ -18,18 +18,33 @@ function AppShellContent({ children, basePath }: { children: React.ReactNode; ba
   // App home link (for app name) - should go to /agents
   const appHomeLink = basePath || '/';
 
+  // URLs to skip auth handling for
+  const skipAuthUrls = useMemo(() => [
+    '/api/auth/refresh',
+    '/api/auth/exchange',
+    '/api/session',
+    '/api/logout',
+  ], []);
+
+  // Use system-wide logout from auth context
   const onLogout = useCallback(async () => {
-    try {
-      await fetch('/api/logout', { method: 'POST', credentials: 'include' });
-    } catch {
-      // ignore
+    await logout();
+  }, [logout]);
+
+  // Sync session from auth state when it changes
+  useEffect(() => {
+    if (authState?.isAuthenticated && authState.user) {
+      setSession({
+        user: {
+          id: authState.user.id,
+          email: authState.user.email,
+          status: 'ACTIVE',
+          roles: authState.user.roles,
+        },
+        isAuthenticated: true,
+      });
     }
-    try {
-      localStorage.removeItem('auth_token');
-    } catch {
-      // ignore
-    }
-  }, []);
+  }, [authState]);
 
   // Load session after auth is ready, and reload when refreshKey changes
   useEffect(() => {
@@ -53,9 +68,19 @@ function AppShellContent({ children, basePath }: { children: React.ReactNode; ba
     };
   }, [isReady, refreshKey]);
 
+  // Handle auth errors - redirect to portal
+  const handleAuthError = useCallback(() => {
+    console.log('[AppShell] Auth error, redirecting to portal');
+    redirectToPortal('session_expired');
+  }, [redirectToPortal]);
+
   return (
     <>
-      <FetchWrapper />
+      <FetchWrapper 
+        skipAuthUrls={skipAuthUrls}
+        onAuthError={handleAuthError}
+        autoRetry={true}
+      />
       <CustomHeader
         session={session}
         onLogout={onLogout}

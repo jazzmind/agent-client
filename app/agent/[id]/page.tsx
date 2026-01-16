@@ -135,7 +135,7 @@ function SidebarConversationsList({
 }
 
 export default function AgentDetailPage() {
-  const { isReady, refreshKey } = useAuth();
+  const { isReady, refreshKey, redirectToPortal, refreshToken } = useAuth();
   const params = useParams<{ id: string }>();
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -154,6 +154,7 @@ export default function AgentDetailPage() {
   const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null);
   const [chatKey, setChatKey] = useState(0); // Key to force chat remount when conversation changes
   const [deletedConversationId, setDeletedConversationId] = useState<string | null>(null);
+  const [isRedirecting, setIsRedirecting] = useState(false);
 
   // Determine if agent supports attachments
   const supportsAttachments = useMemo(() => {
@@ -197,7 +198,28 @@ export default function AgentDetailPage() {
           setToken(tokenData.token);
           setTokenError(null);
         } else if (tokenRes.status === 401) {
-          setTokenError('not_authenticated');
+          // Try to refresh the token first
+          console.log('[AgentDetail] Token fetch returned 401, attempting refresh');
+          const refreshed = await refreshToken();
+          if (refreshed) {
+            // Retry getting the token
+            const retryRes = await fetch('/api/auth/token');
+            if (retryRes.ok) {
+              const retryData = await retryRes.json();
+              setToken(retryData.token);
+              setTokenError(null);
+            } else {
+              // Still failed after refresh - redirect to portal
+              console.log('[AgentDetail] Token fetch still failed after refresh, redirecting');
+              setIsRedirecting(true);
+              redirectToPortal('session_expired');
+            }
+          } else {
+            // Refresh failed - redirect to portal
+            console.log('[AgentDetail] Token refresh failed, redirecting to portal');
+            setIsRedirecting(true);
+            redirectToPortal('session_expired');
+          }
         } else {
           setTokenError('token_fetch_failed');
         }
@@ -208,7 +230,19 @@ export default function AgentDetailPage() {
       }
     }
     load();
-  }, [isReady, refreshKey, agentId]);
+  }, [isReady, refreshKey, agentId, refreshToken, redirectToPortal]);
+
+  // Auto-redirect when not authenticated (after a short delay to show the message)
+  useEffect(() => {
+    if (tokenError === 'not_authenticated' && !isRedirecting) {
+      console.log('[AgentDetail] Not authenticated, auto-redirecting to portal');
+      const timer = setTimeout(() => {
+        setIsRedirecting(true);
+        redirectToPortal('not_authenticated');
+      }, 1500); // Brief delay to show the message
+      return () => clearTimeout(timer);
+    }
+  }, [tokenError, isRedirecting, redirectToPortal]);
 
   // Sync activeTab with URL params
   useEffect(() => {
@@ -391,22 +425,37 @@ export default function AgentDetailPage() {
             {/* Chat Tab - Full height, pinned input */}
             {activeTab === 'chat' && (
               <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
-                {tokenError === 'not_authenticated' ? (
+                {isRedirecting ? (
                   <div className="flex-1 flex items-center justify-center">
                     <div className="text-center max-w-md px-6">
-                      <div className="text-6xl mb-4">🔒</div>
+                      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
                       <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-2">
-                        Authentication Required
+                        Redirecting to AI Portal
+                      </h3>
+                      <p className="text-gray-600 dark:text-gray-400">
+                        Your session has expired. Redirecting you to sign in...
+                      </p>
+                    </div>
+                  </div>
+                ) : tokenError === 'not_authenticated' ? (
+                  <div className="flex-1 flex items-center justify-center">
+                    <div className="text-center max-w-md px-6">
+                      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                      <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-2">
+                        Redirecting to AI Portal
                       </h3>
                       <p className="text-gray-600 dark:text-gray-400 mb-4">
-                        You need to be authenticated to use the chat feature. Please log in through the AI Portal first.
+                        Authentication required. Redirecting you to sign in...
                       </p>
-                      <a
-                        href={process.env.NEXT_PUBLIC_AI_PORTAL_URL || 'http://localhost:3000'}
-                        className="inline-block px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
-                      >
-                        Go to AI Portal
-                      </a>
+                      <p className="text-sm text-gray-500 dark:text-gray-500">
+                        If you are not redirected automatically,{' '}
+                        <button
+                          onClick={() => redirectToPortal('manual_redirect')}
+                          className="text-blue-600 hover:text-blue-700 underline"
+                        >
+                          click here
+                        </button>
+                      </p>
                     </div>
                   </div>
                 ) : tokenError === 'token_fetch_failed' ? (
@@ -419,12 +468,20 @@ export default function AgentDetailPage() {
                       <p className="text-gray-600 dark:text-gray-400 mb-4">
                         Failed to retrieve authentication token. Please try refreshing the page.
                       </p>
-                      <button
-                        onClick={() => window.location.reload()}
-                        className="inline-block px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
-                      >
-                        Refresh Page
-                      </button>
+                      <div className="flex gap-3 justify-center">
+                        <button
+                          onClick={() => window.location.reload()}
+                          className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
+                        >
+                          Refresh Page
+                        </button>
+                        <button
+                          onClick={() => redirectToPortal('token_error')}
+                          className="px-6 py-3 bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 rounded-lg transition-colors"
+                        >
+                          Go to Portal
+                        </button>
+                      </div>
                     </div>
                   </div>
                 ) : !token ? (
