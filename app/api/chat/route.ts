@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server';
-import { requireAuthWithTokenExchange } from '@/lib/auth-helper';
+import { requireToken } from '@/lib/auth-helper';
 
 /**
  * POST /api/chat
@@ -17,8 +17,8 @@ import { requireAuthWithTokenExchange } from '@/lib/auth-helper';
  */
 export async function POST(request: NextRequest) {
   try {
-    const auth = await requireAuthWithTokenExchange(request);
-    if (auth instanceof Response) return auth;
+    // Get token from request (cookie or Authorization header)
+    const token = requireToken(request);
 
     const body = await request.json();
     const messages = Array.isArray(body?.messages) ? body.messages : [];
@@ -52,7 +52,7 @@ export async function POST(request: NextRequest) {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${auth.agentApiToken}`,
+        'Authorization': `Bearer ${token}`,
       },
       body: JSON.stringify(payload),
     });

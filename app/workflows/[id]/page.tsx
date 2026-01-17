@@ -283,14 +283,14 @@ export default function WorkflowDetailPage() {
                 >
                   <div className="flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center text-white text-lg font-medium"
                     style={{
-                      backgroundColor: {
+                      backgroundColor: ({
                         agent: '#3b82f6',
                         tool: '#f97316',
                         condition: '#a855f7',
                         human: '#22c55e',
                         parallel: '#eab308',
                         loop: '#ec4899',
-                      }[step.type] || '#6b7280'
+                      } as Record<string, string>)[step.type] || '#6b7280'
                     }}
                   >
                     {step.type === 'agent' && '🤖'}

@@ -278,16 +278,22 @@ export function ToolConfigPanel({ tool, isAdmin = false }: ToolConfigPanelProps)
   }
 
   function updateProviderConfig(provider: string, field: string, value: any) {
-    setConfig(prev => ({
-      ...prev,
-      providers: {
-        ...prev.providers,
-        [provider]: {
-          ...prev.providers?.[provider],
-          [field]: value,
+    setConfig(prev => {
+      const currentProvider = prev.providers?.[provider] || { enabled: false };
+      const updatedProvider = {
+        ...currentProvider,
+        [field]: value,
+        enabled: field === 'enabled' ? Boolean(value) : (currentProvider.enabled ?? false),
+      };
+      
+      return {
+        ...prev,
+        providers: {
+          ...prev.providers,
+          [provider]: updatedProvider,
         },
-      },
-    }));
+      };
+    });
   }
 
   function toggleAgentSelection(agentId: string) {

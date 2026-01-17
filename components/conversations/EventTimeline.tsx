@@ -65,15 +65,17 @@ export function EventTimeline({ events, enhancedToolDisplay = true }: EventTimel
 
   // Group tool_call events with their corresponding tool_result events
   const processedEvents = useMemo(() => {
-    if (!enhancedToolDisplay) return events.map((e, i) => ({ event: e, index: i, isToolPair: false }));
-
-    const result: Array<{
+    type ProcessedEvent = {
       event: RunEvent;
       index: number;
       isToolPair: boolean;
       toolCallData?: ReturnType<typeof convertToToolCallData>;
       skipRender?: boolean;
-    }> = [];
+    };
+
+    if (!enhancedToolDisplay) return events.map((e, i): ProcessedEvent => ({ event: e, index: i, isToolPair: false, skipRender: false }));
+
+    const result: ProcessedEvent[] = [];
 
     const toolResultIndices = new Set<number>();
 

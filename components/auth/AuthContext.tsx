@@ -16,7 +16,6 @@ import {
   createAuthStateManager,
   setGlobalAuthManager,
   clearGlobalAuthManager,
-  setAuthInitializing,
   type AuthStateManager,
   type AuthState,
 } from '@jazzmind/busibox-app/lib/auth';
@@ -68,31 +67,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const hasInitializedRef = useRef(false);
   const portalUrl = process.env.NEXT_PUBLIC_AI_PORTAL_URL || 'http://localhost:3000';
 
-  // On initial mount, set auth as initializing until we determine if there's a token
-  useEffect(() => {
-    if (!hasInitializedRef.current) {
-      hasInitializedRef.current = true;
-      // Set initializing on mount - will be cleared when we check for token
-      setAuthInitializing(true);
-    }
-  }, []);
-
   // Handle token exchange from URL FIRST, before starting auth manager
   useEffect(() => {
     const token = searchParams.get('token');
     
     if (!token) {
       // No token in URL - mark exchange as complete immediately
-      setAuthInitializing(false);
       setTokenExchangeComplete(true);
       setIsReady(true);
       return;
     }
 
     // Token present - need to exchange it before starting auth monitoring
-    // Set initializing flag so FetchWrapper doesn't redirect on 401s
     console.log('[AuthProvider] Token found in URL, starting exchange...');
-    setAuthInitializing(true);
     setIsReady(false);
     setIsExchanging(true);
 
@@ -105,8 +92,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         console.error('[AuthProvider] Token exchange failed:', error);
       })
       .finally(() => {
-        // Clear initializing flag - now 401s can trigger redirects
-        setAuthInitializing(false);
         setIsExchanging(false);
         setIsReady(true);
         setTokenExchangeComplete(true);

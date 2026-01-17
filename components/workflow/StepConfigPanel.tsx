@@ -72,7 +72,7 @@ export default function StepConfigPanel({
           Agent *
         </label>
         <select
-          value={localStep.agent || localStep.agent_id || ''}
+          value={(localStep as any).agent || localStep.agent_id || ''}
           onChange={(e) => {
             // Set both 'agent' (for backend) and 'agent_id' (for backwards compat)
             handleChange('agent', e.target.value);
