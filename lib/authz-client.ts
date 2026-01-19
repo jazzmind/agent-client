@@ -1,37 +1,23 @@
 /**
  * AuthZ Client for Agent Manager
- * 
- * Exchanges ai-portal SSO tokens for authz service tokens that can be used
- * to authenticate with agent-server and other backend services.
- * 
- * Agent-manager authenticates to authz service using its own client_id/secret,
- * then requests tokens on behalf of users (token exchange flow).
+ *
+ * Zero Trust Authentication Architecture:
+ * - Uses session JWT from ai-portal as subject_token
+ * - NO client credentials required for user operations
+ * - The session JWT cryptographically proves user identity
+ *
+ * This module uses the shared Zero Trust functions from busibox-app.
  */
 
-import { parseJWTPayload } from './auth-helper';
+import {
+  exchangeTokenZeroTrust,
+  getAuthHeaderZeroTrust,
+  type AuthzAudience as SharedAuthzAudience,
+  type ZeroTrustExchangeResponse,
+} from '@jazzmind/busibox-app';
 
-const TOKEN_EXCHANGE_GRANT = 'urn:ietf:params:oauth:grant-type:token-exchange';
-
-function getAuthzBaseUrl(): string {
-  // Default to localhost proxy; override with AUTHZ_BASE_URL for direct access
-  return process.env.AUTHZ_BASE_URL || 'https://localhost/api/authz';
-}
-
-function getAuthzClientId(): string {
-  return process.env.AUTHZ_CLIENT_ID || 'agent-manager';
-}
-
-function getAuthzClientSecret(): string {
-  const secret = process.env.AUTHZ_CLIENT_SECRET;
-  
-  if (!secret) {
-    throw new Error('AUTHZ_CLIENT_SECRET not configured. Agent-manager needs its own client credentials registered with authz service.');
-  }
-  
-  return secret;
-}
-
-export type AuthzAudience = 'agent-api' | 'ingest-api' | 'search-api' | (string & {});
+// Re-export types
+export type AuthzAudience = SharedAuthzAudience;
 
 export interface AuthzTokenResponse {
   accessToken: string;
@@ -40,13 +26,17 @@ export interface AuthzTokenResponse {
   scope: string;
 }
 
+function getAuthzBaseUrl(): string {
+  return process.env.AUTHZ_BASE_URL || 'http://authz-api:8010';
+}
+
 /**
- * Exchange ai-portal SSO token for an authz token
- * 
- * This calls the authz service directly using agent-manager's client credentials
- * to exchange the SSO token for a downstream service token.
- * 
- * @param ssoToken - The SSO token from ai-portal (contains user identity)
+ * Exchange SSO token for an authz token (Zero Trust)
+ *
+ * The SSO token from ai-portal IS a session JWT - use it directly as subject_token.
+ * No client credentials required.
+ *
+ * @param ssoToken - The SSO token from ai-portal (this is the session JWT)
  * @param audience - The target service (e.g., 'agent-api')
  * @param scopes - Optional scopes to request
  * @returns Authz token response
@@ -56,57 +46,32 @@ export async function exchangeForAuthzToken(
   audience: AuthzAudience,
   scopes?: string[]
 ): Promise<AuthzTokenResponse> {
-  // Extract user ID from SSO token
-  const payload = parseJWTPayload(ssoToken);
-  if (!payload || !payload.sub) {
-    throw new Error('Invalid SSO token: missing user ID');
-  }
-  
-  const userId = payload.sub;
-  const scope = (scopes ?? []).filter(Boolean).join(' ');
-
-  const params = new URLSearchParams({
-    grant_type: TOKEN_EXCHANGE_GRANT,
-    client_id: getAuthzClientId(),
-    client_secret: getAuthzClientSecret(),
-    audience,
-    scope,
-    requested_subject: userId,
-    requested_purpose: 'agent-manager',
-  });
-
-  const response = await fetch(`${getAuthzBaseUrl()}/oauth/token`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: params.toString(),
-  });
-
-  if (!response.ok) {
-    const text = await response.text();
-    throw new Error(`Authz token exchange failed (${response.status}): ${text}`);
-  }
-
-  const data = (await response.json()) as {
-    access_token: string;
-    token_type: 'bearer';
-    expires_in: number;
-    scope?: string;
-  };
+  // The SSO token IS the session JWT - use it directly for Zero Trust exchange
+  const result = await exchangeTokenZeroTrust(
+    {
+      sessionJwt: ssoToken,
+      audience,
+      scopes,
+      purpose: 'agent-manager',
+    },
+    {
+      authzBaseUrl: getAuthzBaseUrl(),
+      verbose: process.env.VERBOSE_AUTHZ_LOGGING === 'true',
+    }
+  );
 
   return {
-    accessToken: data.access_token,
-    tokenType: data.token_type ?? 'bearer',
-    expiresIn: data.expires_in ?? 900,
-    scope: data.scope ?? scope,
+    accessToken: result.accessToken,
+    tokenType: result.tokenType,
+    expiresIn: result.expiresIn,
+    scope: result.scope,
   };
 }
 
 /**
- * Get an authz token for agent-api calls
- * 
- * This is a convenience wrapper that exchanges the SSO token for an agent-api token.
- * 
- * @param ssoToken - The SSO token from ai-portal
+ * Get an authz token for agent-api calls (Zero Trust)
+ *
+ * @param ssoToken - The SSO token from ai-portal (session JWT)
  * @returns Bearer token string for Authorization header
  */
 export async function getAgentApiToken(ssoToken: string): Promise<string> {
@@ -116,43 +81,48 @@ export async function getAgentApiToken(ssoToken: string): Promise<string> {
 
 /**
  * Get an authz token for test user (local development only)
- * 
- * This bypasses the SSO token exchange and directly requests a token
- * for a test user. Only works when TEST_USER_ID is configured.
- * 
- * @param userId - Test user ID
+ *
+ * In Zero Trust mode, this still requires a valid session JWT.
+ * For local testing, use the TEST_SESSION_JWT environment variable.
+ *
+ * @param userId - Test user ID (not used in Zero Trust mode - included for API compatibility)
  * @returns Bearer token string for Authorization header
  */
 export async function getAgentApiTokenForTestUser(userId: string): Promise<string> {
-  const scope = [].filter(Boolean).join(' ');
+  const testSessionJwt = process.env.TEST_SESSION_JWT;
 
-  const params = new URLSearchParams({
-    grant_type: TOKEN_EXCHANGE_GRANT,
-    client_id: getAuthzClientId(),
-    client_secret: getAuthzClientSecret(),
-    audience: 'agent-api',
-    scope,
-    requested_subject: userId,
-    requested_purpose: 'agent-manager-test',
-  });
-
-  const response = await fetch(`${getAuthzBaseUrl()}/oauth/token`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: params.toString(),
-  });
-
-  if (!response.ok) {
-    const text = await response.text();
-    throw new Error(`Authz token exchange failed for test user (${response.status}): ${text}`);
+  if (!testSessionJwt) {
+    throw new Error(
+      'TEST_SESSION_JWT not configured. In Zero Trust mode, a valid session JWT is required even for test users. ' +
+        'Set TEST_SESSION_JWT to a valid session JWT from the authz service.'
+    );
   }
 
-  const data = (await response.json()) as {
-    access_token: string;
-    token_type: 'bearer';
-    expires_in: number;
-    scope?: string;
-  };
+  const result = await exchangeForAuthzToken(testSessionJwt, 'agent-api', [
+    'agents:read',
+    'agents:write',
+  ]);
+  return result.accessToken;
+}
 
-  return data.access_token;
+/**
+ * Get authorization header using Zero Trust exchange
+ */
+export async function getAuthorizationHeader(
+  ssoToken: string,
+  audience: AuthzAudience,
+  scopes?: string[]
+): Promise<string> {
+  return getAuthHeaderZeroTrust(
+    {
+      sessionJwt: ssoToken,
+      audience,
+      scopes,
+      purpose: 'agent-manager',
+    },
+    {
+      authzBaseUrl: getAuthzBaseUrl(),
+      verbose: process.env.VERBOSE_AUTHZ_LOGGING === 'true',
+    }
+  );
 }
