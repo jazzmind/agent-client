@@ -219,7 +219,7 @@ During deployment, the provisioning scripts should:
 
 1. **Setup**:
    ```bash
-   cp env.local.example .env.local
+   cp env.example .env.local
    # Update AUTHZ_CLIENT_SECRET with actual value
    npm run dev
    ```

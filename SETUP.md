@@ -28,7 +28,7 @@ AUTHZ_CLIENT_SECRET=<secret-from-admin>
 
 ```bash
 # Copy the example file
-cp env.local.example .env.local
+cp env.example .env.local
 
 # Edit .env.local and set:
 # - AUTHZ_CLIENT_SECRET (from step 1)
@@ -186,5 +186,5 @@ See `docs/AUTHENTICATION.md` for detailed architecture documentation.
 ## Next Steps
 
 - Read `docs/AUTHENTICATION.md` for architecture details
-- Check `env.local.example` for all configuration options
+- Check `env.example` for all configuration options
 - Review `docs/DEPLOYMENT-SUCCESS.md` for deployment guide
