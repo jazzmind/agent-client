@@ -8,7 +8,7 @@
 
 ## Overview
 
-The agent-server needs conversation and message management endpoints to support the agent-client chat interface without requiring direct database access from the client.
+The agent-server needs conversation and message management endpoints to support the agent-manager chat interface without requiring direct database access from the client.
 
 ---
 
@@ -450,7 +450,7 @@ alembic upgrade head
 MINIO_ENDPOINT = os.getenv("MINIO_ENDPOINT", "files-lxc:9000")
 MINIO_ACCESS_KEY = os.getenv("MINIO_ACCESS_KEY")
 MINIO_SECRET_KEY = os.getenv("MINIO_SECRET_KEY")
-MINIO_BUCKET = "agent-client-uploads"
+MINIO_BUCKET = "agent-manager-uploads"
 MINIO_SECURE = os.getenv("MINIO_SECURE", "false").lower() == "true"
 ```
 
@@ -518,7 +518,7 @@ ALLOWED_EXTENSIONS = {
 - [ ] All tests passing (unit + integration)
 - [ ] OpenAPI spec updated
 - [ ] Agent-client refactored to use new endpoints
-- [ ] No direct database access from agent-client
+- [ ] No direct database access from agent-manager
 - [ ] Documentation complete
 
 ---

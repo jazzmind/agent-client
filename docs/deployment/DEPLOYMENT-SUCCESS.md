@@ -154,7 +154,7 @@ cd /root/busibox/provision/ansible
 ansible-playbook -i inventory/test -l apps \
   --tags app_deployer,secrets site.yml \
   --vault-password-file ~/.vault_pass \
-  --extra-vars "deploy_app=agent-client deploy_branch=main"
+  --extra-vars "deploy_app=agent-manager deploy_branch=main"
 ```
 
 **Exit Code**: 0 ✅  

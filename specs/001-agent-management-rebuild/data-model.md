@@ -6,7 +6,7 @@
 
 ## Overview
 
-This document defines the data structures used in the agent-client application and busibox-ui shared library. All entities are TypeScript interfaces that represent data received from the agent-server API or managed locally in the client.
+This document defines the data structures used in the agent-manager application and busibox-ui shared library. All entities are TypeScript interfaces that represent data received from the agent-server API or managed locally in the client.
 
 **Key Principles**:
 - Client is stateless; all persistent data managed by agent-server
@@ -19,7 +19,7 @@ This document defines the data structures used in the agent-client application a
 
 ## Agent-Server Entities
 
-These entities are returned by the agent-server API and consumed by the agent-client.
+These entities are returned by the agent-server API and consumed by the agent-manager.
 
 ### Agent
 
@@ -695,7 +695,7 @@ User Design → WorkflowBuilder (React Flow)
 
 ## Type Definitions Location
 
-**agent-client** (`lib/types.ts`):
+**agent-manager** (`lib/types.ts`):
 - Agent, Run, Workflow, Tool, Schedule, Scorer, Score
 - All agent-server API types
 - ChatSettings, UIState, RunFilters
@@ -832,4 +832,4 @@ All entities are well-defined with:
 - ✅ Relationships mapped
 - ✅ API request/response examples provided
 
-The data model is ready for implementation. TypeScript interfaces will be created in `lib/types.ts` (agent-client) and `src/chat/types/index.ts` (busibox-ui).
+The data model is ready for implementation. TypeScript interfaces will be created in `lib/types.ts` (agent-manager) and `src/chat/types/index.ts` (busibox-ui).

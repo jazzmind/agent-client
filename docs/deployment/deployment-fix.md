@@ -65,7 +65,7 @@ Prisma CLI Version : 7.1.0
 - Prisma 5.x is stable and compatible with existing schema
 - Avoids need to migrate to new config format
 
-**Status**: ✅ Fixed in agent-client repo
+**Status**: ✅ Fixed in agent-manager repo
 
 ---
 
@@ -75,7 +75,7 @@ After these fixes, the deployment should succeed:
 
 ```bash
 cd /root/busibox/provision/ansible
-make deploy-agent-client INV=inventory/test
+make deploy-agent-manager INV=inventory/test
 ```
 
 Expected output:

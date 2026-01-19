@@ -8,7 +8,7 @@
 
 ## Executive Summary
 
-The agent-client rebuild requires several new endpoints and enhancements to the existing agent-server API to support full CRUD operations, personal agent management, dispatcher agent functionality, and workflow state management.
+The agent-manager rebuild requires several new endpoints and enhancements to the existing agent-server API to support full CRUD operations, personal agent management, dispatcher agent functionality, and workflow state management.
 
 **Current State**: Agent-server has basic create/list operations but lacks update/delete for tools, workflows, and evaluators.
 
@@ -1000,10 +1000,10 @@ All requirements can be implemented with existing infrastructure. No external bl
 
 ## Questions for Agent-Server Team
 
-1. **Dispatcher Agent**: Do you prefer to implement the dispatcher agent, or should agent-client team provide the implementation?
+1. **Dispatcher Agent**: Do you prefer to implement the dispatcher agent, or should agent-manager team provide the implementation?
 2. **Workflow Resume**: Is workflow state preservation feasible with current architecture? Should this be deferred?
 3. **Version History**: Is there existing audit logging infrastructure we can leverage?
-4. **Timeline**: Can Phase 1 requirements (REQ-001, REQ-002, REQ-003) be completed by Week 3 of agent-client implementation?
+4. **Timeline**: Can Phase 1 requirements (REQ-001, REQ-002, REQ-003) be completed by Week 3 of agent-manager implementation?
 5. **API Consistency**: Should we standardize parameter names (`job_id` → `schedule_id`) as part of this work?
 
 ---

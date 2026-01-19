@@ -25,10 +25,10 @@ This guide provides step-by-step instructions for setting up the development env
 ### 1. Clone Repositories
 
 ```bash
-# Clone agent-client
+# Clone agent-manager
 cd ~/Code/sonnenreich
-git clone <repo-url> agent-client
-cd agent-client
+git clone <repo-url> agent-manager
+cd agent-manager
 git checkout 001-agent-management-rebuild
 
 # Clone busibox-ui (shared library)
@@ -49,9 +49,9 @@ npm run build
 npm link
 ```
 
-**agent-client**:
+**agent-manager**:
 ```bash
-cd ~/Code/sonnenreich/agent-client
+cd ~/Code/sonnenreich/agent-manager
 npm install
 
 # Link to local busibox-ui
@@ -60,9 +60,9 @@ npm link @busibox/ui
 
 ### 3. Configure Environment
 
-**agent-client**:
+**agent-manager**:
 ```bash
-cd ~/Code/sonnenreich/agent-client
+cd ~/Code/sonnenreich/agent-manager
 cp env.example .env.local
 ```
 
@@ -89,9 +89,9 @@ cd ~/Code/sonnenreich/busibox-ui
 npm run dev
 ```
 
-**Terminal 2 - agent-client**:
+**Terminal 2 - agent-manager**:
 ```bash
-cd ~/Code/sonnenreich/agent-client
+cd ~/Code/sonnenreich/agent-manager
 npm run dev
 ```
 
@@ -116,7 +116,7 @@ uvicorn app.main:app --reload --port 8000
 ### Unit Tests
 
 ```bash
-cd ~/Code/sonnenreich/agent-client
+cd ~/Code/sonnenreich/agent-manager
 
 # Run all tests
 npm test
@@ -134,7 +134,7 @@ npm test lib/agent-api-client.test.ts
 ### Component Tests (Storybook)
 
 ```bash
-cd ~/Code/sonnenreich/agent-client
+cd ~/Code/sonnenreich/agent-manager
 
 # Start Storybook
 npm run storybook
@@ -146,7 +146,7 @@ npm run build-storybook
 ### Integration Tests
 
 ```bash
-cd ~/Code/sonnenreich/agent-client
+cd ~/Code/sonnenreich/agent-manager
 
 # Requires agent-server running
 npm run test:integration
@@ -185,10 +185,10 @@ ls dist/
 # Should see: index.js, index.mjs, index.d.ts, chat/...
 ```
 
-### Build agent-client
+### Build agent-manager
 
 ```bash
-cd ~/Code/sonnenreich/agent-client
+cd ~/Code/sonnenreich/agent-manager
 npm run build
 
 # Verify build
@@ -206,13 +206,13 @@ npm start
 ```bash
 cd ~/Code/sonnenreich/busibox/provision/ansible
 
-# Deploy agent-client to test
-make deploy-agent-client INV=inventory/test
+# Deploy agent-manager to test
+make deploy-agent-manager INV=inventory/test
 
 # Verify deployment
 ssh root@<test-apps-ip>
 pm2 list
-pm2 logs agent-client
+pm2 logs agent-manager
 ```
 
 ### Deploy to Production
@@ -221,13 +221,13 @@ pm2 logs agent-client
 ```bash
 cd ~/Code/sonnenreich/busibox/provision/ansible
 
-# Deploy agent-client to production
-make deploy-agent-client
+# Deploy agent-manager to production
+make deploy-agent-manager
 
 # Verify deployment
 ssh root@<prod-apps-ip>
 pm2 list
-pm2 logs agent-client
+pm2 logs agent-manager
 ```
 
 ### Manual Deployment (if needed)
@@ -238,7 +238,7 @@ pm2 logs agent-client
 ssh root@<apps-ip>
 
 # Navigate to app directory
-cd /srv/apps/agent-client
+cd /srv/apps/agent-manager
 
 # Pull latest changes
 git fetch origin
@@ -252,10 +252,10 @@ npm install
 npm run build
 
 # Restart PM2
-pm2 restart agent-client
+pm2 restart agent-manager
 
 # Check logs
-pm2 logs agent-client --lines 50
+pm2 logs agent-manager --lines 50
 ```
 
 ---
@@ -270,7 +270,7 @@ pm2 logs agent-client --lines 50
    ```
 
 2. **Make changes**:
-   - Edit files in `agent-client/` or `busibox-ui/`
+   - Edit files in `agent-manager/` or `busibox-ui/`
    - Hot reload will update automatically
 
 3. **Write tests**:
@@ -307,7 +307,7 @@ pm2 logs agent-client --lines 50
 
 ### Working on busibox-ui
 
-When making changes to busibox-ui that affect agent-client:
+When making changes to busibox-ui that affect agent-manager:
 
 1. **Make changes in busibox-ui**:
    ```bash
@@ -316,9 +316,9 @@ When making changes to busibox-ui that affect agent-client:
    npm run build
    ```
 
-2. **Test in agent-client**:
+2. **Test in agent-manager**:
    ```bash
-   cd ~/Code/sonnenreich/agent-client
+   cd ~/Code/sonnenreich/agent-manager
    # Changes are automatically available via npm link
    npm run dev
    ```
@@ -339,9 +339,9 @@ When making changes to busibox-ui that affect agent-client:
    npm publish
    ```
 
-4. **Update agent-client dependency**:
+4. **Update agent-manager dependency**:
    ```bash
-   cd ~/Code/sonnenreich/agent-client
+   cd ~/Code/sonnenreich/agent-manager
    npm install @busibox/ui@latest
    ```
 
@@ -352,7 +352,7 @@ When making changes to busibox-ui that affect agent-client:
 ### Add a New Component
 
 ```bash
-# In agent-client
+# In agent-manager
 touch components/admin/NewComponent.tsx
 touch components/admin/NewComponent.stories.tsx
 touch tests/unit/NewComponent.test.ts
@@ -401,14 +401,14 @@ touch tests/unit/useNewFeature.test.ts
 ssh root@<agent-ip>
 journalctl -u agent-api -f
 
-# Check agent-client logs
-pm2 logs agent-client
+# Check agent-manager logs
+pm2 logs agent-manager
 ```
 
 ### Run Linting
 
 ```bash
-cd ~/Code/sonnenreich/agent-client
+cd ~/Code/sonnenreich/agent-manager
 
 # Run ESLint
 npm run lint
@@ -424,7 +424,7 @@ npm run type-check
 
 ## Troubleshooting
 
-### Issue: busibox-ui changes not reflecting in agent-client
+### Issue: busibox-ui changes not reflecting in agent-manager
 
 **Solution**:
 ```bash
@@ -432,8 +432,8 @@ npm run type-check
 cd ~/Code/sonnenreich/busibox-ui
 npm run build
 
-# Clear Next.js cache in agent-client
-cd ~/Code/sonnenreich/agent-client
+# Clear Next.js cache in agent-manager
+cd ~/Code/sonnenreich/agent-manager
 rm -rf .next
 npm run dev
 ```
@@ -446,7 +446,7 @@ npm run dev
 cd ~/Code/sonnenreich/busibox-ui
 npm run build
 
-# Restart TypeScript server in agent-client
+# Restart TypeScript server in agent-manager
 # In VS Code: Cmd+Shift+P → "TypeScript: Restart TS Server"
 ```
 
@@ -467,7 +467,7 @@ npm run build
 cd ~/Code/sonnenreich/busibox-ui
 npm link
 
-cd ~/Code/sonnenreich/agent-client
+cd ~/Code/sonnenreich/agent-manager
 npm link @busibox/ui
 
 # Or install from registry
@@ -487,7 +487,7 @@ npm install @busibox/ui@latest
 
 ## Key Configuration Files
 
-### agent-client
+### agent-manager
 
 - **`.env.local`**: Environment variables (not committed)
 - **`next.config.ts`**: Next.js configuration
@@ -556,10 +556,10 @@ npm run build-storybook
 # From busibox/provision/ansible
 
 # Deploy to test
-make deploy-agent-client INV=inventory/test
+make deploy-agent-manager INV=inventory/test
 
 # Deploy to production
-make deploy-agent-client
+make deploy-agent-manager
 ```
 
 ---
@@ -628,6 +628,6 @@ After completing setup:
 1. **Check documentation** in `specs/001-agent-management-rebuild/`
 2. **Review agent-server API docs** at http://localhost:8000/docs
 3. **Check Busibox architecture docs** in `busibox/docs/architecture/`
-4. **Review existing code** in `agent-client/` and `ai-portal/`
+4. **Review existing code** in `agent-manager/` and `ai-portal/`
 5. **Check test examples** in `tests/` directories
 6. **Ask team** for clarification on requirements or technical decisions

@@ -57,7 +57,7 @@ npm start            # Start production server
 ## Project Structure
 
 ```
-agent-client/
+agent-manager/
 ├── app/              # Next.js app directory
 │   ├── api/          # API routes (proxies to backend)
 │   ├── chat/         # Chat interface pages

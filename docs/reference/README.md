@@ -106,7 +106,7 @@ See [Quick Start Guide](./development/quick-start.md) for detailed instructions.
 
 ### 1. Frontend-Only Architecture
 
-The agent-client **does not access any database directly**. All data operations go through backend APIs:
+The agent-manager **does not access any database directly**. All data operations go through backend APIs:
 
 - **Agent Server API**: Conversations, messages, agents, runs, settings
 - **Ingest API**: File uploads, document processing, RAG search
@@ -210,7 +210,7 @@ Base URL: `http://ingest-lxc:8001` or `http://10.96.200.206:8001`
 
 ### Agent Management Rebuild (Dec 2024)
 
-Complete rebuild of the agent-client to:
+Complete rebuild of the agent-manager to:
 1. Remove Mastra framework dependencies
 2. Integrate with Python agent-server API
 3. Remove all database access (use APIs instead)

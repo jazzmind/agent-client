@@ -6,7 +6,7 @@
 
 ## Executive Summary
 
-Successfully removed all Mastra dependencies and refactored the agent-client codebase to use the Python agent-server API exclusively. Phase 1 (Setup) is now complete, and the project is ready for Phase 2 (Foundational) implementation.
+Successfully removed all Mastra dependencies and refactored the agent-manager codebase to use the Python agent-server API exclusively. Phase 1 (Setup) is now complete, and the project is ready for Phase 2 (Foundational) implementation.
 
 ---
 
@@ -283,7 +283,7 @@ NEXT_PUBLIC_AGENT_API_URL=http://10.96.200.31:8000
    ```bash
    cd /Users/wessonnenreich/Code/sonnenreich/busibox-ui
    npm link
-   cd /Users/wessonnenreich/Code/sonnenreich/agent-client
+   cd /Users/wessonnenreich/Code/sonnenreich/agent-manager
    npm link @busibox/ui
    ```
 

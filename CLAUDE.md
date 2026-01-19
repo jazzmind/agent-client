@@ -46,10 +46,10 @@ cp env.example .env.local
 cd /path/to/busibox/provision/ansible
 
 # Deploy to production:
-make deploy-agent-client
+make deploy-agent-manager
 
 # Deploy to test environment:
-make deploy-agent-client INV=inventory/test
+make deploy-agent-manager INV=inventory/test
 ```
 
 ## Architecture
@@ -319,8 +319,8 @@ npm install
 
 ```bash
 pm2 list                    # Check status
-pm2 logs agent-client       # View logs
-pm2 restart agent-client    # Restart app
+pm2 logs agent-manager       # View logs
+pm2 restart agent-manager    # Restart app
 ```
 
 ## Documentation

@@ -9,7 +9,7 @@
 
 ## Overview
 
-The agent-server needs conversation and message management endpoints to support the agent-client chat interface without requiring direct database access from the client.
+The agent-server needs conversation and message management endpoints to support the agent-manager chat interface without requiring direct database access from the client.
 
 ---
 
@@ -335,7 +335,7 @@ alembic upgrade head
 - [ ] All tests passing (unit + integration)
 - [ ] OpenAPI spec updated
 - [ ] Documentation complete
-- [ ] Ready for agent-client integration
+- [ ] Ready for agent-manager integration
 
 ---
 

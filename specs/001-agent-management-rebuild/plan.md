@@ -5,7 +5,7 @@
 
 ## Summary
 
-Rebuild the agent-client application to provide a comprehensive UI for managing AI agents through the Python agent-server API. The system will feature intelligent chat routing via a dispatcher agent, visual workflow design, LLM-assisted agent creation, and complete admin controls. All chat components will be extracted into the busibox-ui shared library to enable reuse across Busibox applications (AI Portal, Agent Client, etc.).
+Rebuild the agent-manager application to provide a comprehensive UI for managing AI agents through the Python agent-server API. The system will feature intelligent chat routing via a dispatcher agent, visual workflow design, LLM-assisted agent creation, and complete admin controls. All chat components will be extracted into the busibox-ui shared library to enable reuse across Busibox applications (AI Portal, Agent Client, etc.).
 
 **Core Technical Approach**:
 - Extract chat components into busibox-ui with configurable API handlers supporting both direct LLM (AI Portal) and agent-server routing (Agent Client)
@@ -82,7 +82,7 @@ specs/001-agent-management-rebuild/
 ├── data-model.md        # Phase 1 output
 ├── quickstart.md        # Phase 1 output
 ├── contracts/           # Phase 1 output (API contracts)
-│   └── agent-client-api.yaml
+│   └── agent-manager-api.yaml
 ├── tasks.md             # Phase 2 output (/speckit.tasks command)
 └── checklists/
     └── requirements.md  # Requirements validation checklist
@@ -91,7 +91,7 @@ specs/001-agent-management-rebuild/
 ### Source Code (repository root)
 
 ```text
-agent-client/                    # Next.js application
+agent-manager/                    # Next.js application
 ├── app/                         # Next.js App Router
 │   ├── page.tsx                # Home/dashboard
 │   ├── layout.tsx              # Root layout
@@ -203,10 +203,10 @@ busibox-ui/                     # Shared UI component library
 ```
 
 **Structure Decision**: This is a web application with:
-1. **agent-client**: Next.js frontend with API proxy routes
+1. **agent-manager**: Next.js frontend with API proxy routes
 2. **busibox-ui**: Shared component library (new, created as part of this project)
 
-The agent-client acts as a pure UI layer that proxies all requests to the agent-server backend. The busibox-ui library provides reusable components that work with both direct LLM integration (AI Portal) and agent-server routing (Agent Client).
+The agent-manager acts as a pure UI layer that proxies all requests to the agent-server backend. The busibox-ui library provides reusable components that work with both direct LLM integration (AI Portal) and agent-server routing (Agent Client).
 
 ## Complexity Tracking
 
@@ -323,7 +323,7 @@ The data model will be documented in `data-model.md` and will include:
 
 #### Client-Side Entities (TypeScript interfaces)
 
-These entities represent the data structures used in the agent-client UI:
+These entities represent the data structures used in the agent-manager UI:
 
 1. **Agent** (from agent-server)
    - `id`: UUID
@@ -426,16 +426,16 @@ These entities represent the data structures used in the agent-client UI:
     - `size`: number
     - `url`: string
 
-11. **ChatSettings** (agent-client specific)
+11. **ChatSettings** (agent-manager specific)
     - `enabled_tools`: string[] (e.g., ['doc_search', 'web_search'])
     - `selected_agents`: UUID[] (personal agents)
     - `routing_mode`: 'automatic' | 'manual'
 
 ### API Contracts
 
-#### Agent-Server API (consumed by agent-client)
+#### Agent-Server API (consumed by agent-manager)
 
-The agent-client will consume the following agent-server endpoints. Contracts will be documented in `contracts/agent-server-api.yaml` (OpenAPI 3.0 format):
+The agent-manager will consume the following agent-server endpoints. Contracts will be documented in `contracts/agent-server-api.yaml` (OpenAPI 3.0 format):
 
 **Agents**:
 - `GET /agents` - List all agents (built-in + custom)
@@ -501,14 +501,14 @@ The quickstart guide (`quickstart.md`) will provide:
 1. **Local Development Setup**:
    ```bash
    # Clone and install dependencies
-   cd agent-client
+   cd agent-manager
    npm install
    
    # Install busibox-ui (local development)
    cd ../busibox-ui
    npm install
    npm link
-   cd ../agent-client
+   cd ../agent-manager
    npm link @busibox/ui
    
    # Configure environment
@@ -841,7 +841,7 @@ The quickstart guide (`quickstart.md`) will provide:
 
 1. **busibox-ui** (new)
    - **Version**: 0.1.0 (initial)
-   - **Integration**: npm package, imported in agent-client and AI Portal
+   - **Integration**: npm package, imported in agent-manager and AI Portal
    - **Breaking Changes**: Semantic versioning, changelog, migration guides
 
 2. **React Flow** (npm package)

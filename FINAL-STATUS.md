@@ -100,7 +100,7 @@ The application will now:
 
 ```bash
 cd /root/busibox/provision/ansible
-make deploy-agent-client INV=inventory/test
+make deploy-agent-manager INV=inventory/test
 ```
 
 **Expected Result**: ✅ Successful deployment (no Prisma errors, no Mastra errors)
@@ -210,7 +210,7 @@ Once backend endpoints are ready:
 
 ## Conclusion
 
-The agent-client rebuild is **100% COMPLETE** with:
+The agent-manager rebuild is **100% COMPLETE** with:
 
 ✅ **Clean Architecture**: No database, no framework dependencies  
 ✅ **API Integration**: Ready for agent-server and ingest API  
@@ -220,7 +220,7 @@ The agent-client rebuild is **100% COMPLETE** with:
 
 **Status**: ✅ **READY TO DEPLOY**
 
-**Next**: Deploy agent-client, implement backend endpoints, integrate and test!
+**Next**: Deploy agent-manager, implement backend endpoints, integrate and test!
 
 ---
 

@@ -43,9 +43,9 @@ This guide walks you through setting up and testing the complete agent server ad
 
 ## Step 2: Admin Client Setup
 
-1. **Navigate to agent-client directory:**
+1. **Navigate to agent-manager directory:**
    ```bash
-   cd ../agent-client
+   cd ../agent-manager
    ```
 
 2. **Install dependencies:**

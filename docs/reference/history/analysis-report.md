@@ -7,7 +7,7 @@
 
 ## Executive Summary
 
-The agent-client rebuild planning phase is complete. All critical decisions have been made, ambiguities resolved, and design artifacts generated. The project is ready to proceed to task breakdown and implementation.
+The agent-manager rebuild planning phase is complete. All critical decisions have been made, ambiguities resolved, and design artifacts generated. The project is ready to proceed to task breakdown and implementation.
 
 ### Key Deliverables
 
@@ -92,7 +92,7 @@ The agent-client rebuild planning phase is complete. All critical decisions have
 ┌─────────────────────────────────────────────────────────────┐
 │                        User Browser                          │
 ├─────────────────────────────────────────────────────────────┤
-│  agent-client (Next.js 15)                                   │
+│  agent-manager (Next.js 15)                                   │
 │  ├── Chat Interface (busibox-ui components)                  │
 │  ├── Agent Management (admin)                                │
 │  ├── Workflow Builder (React Flow)                           │
@@ -126,7 +126,7 @@ The agent-client rebuild planning phase is complete. All critical decisions have
 **Chat Message Flow**:
 ```
 User Input → MessageInput (busibox-ui)
-  → POST /api/runs (agent-client proxy)
+  → POST /api/runs (agent-manager proxy)
   → POST /runs (agent-server)
   → Dispatcher Agent analyzes query
   → Routes to tools/agents
@@ -139,7 +139,7 @@ User Input → MessageInput (busibox-ui)
 ```
 User Input → AgentEditor
   → Validation (client-side)
-  → POST /api/agents (agent-client proxy)
+  → POST /api/agents (agent-manager proxy)
   → POST /agents/definitions (agent-server)
   → Agent saved to PostgreSQL
   → Agent returned to client
@@ -346,7 +346,7 @@ User Input → AgentEditor
 1. **busibox-ui Package** 🔄
    - Status: Exists but needs chat components
    - Timeline: Phase 1 Week 1-2
-   - Blocker: Must complete before agent-client chat work
+   - Blocker: Must complete before agent-manager chat work
 
 2. **React Flow** ✅
    - Status: npm package, well-maintained
@@ -501,7 +501,7 @@ The following documents provide complete guidance for implementation:
 
 ## Conclusion
 
-The agent-client rebuild is well-planned and ready for implementation. All critical decisions have been made, risks have been identified and mitigated, and success criteria are clearly defined.
+The agent-manager rebuild is well-planned and ready for implementation. All critical decisions have been made, risks have been identified and mitigated, and success criteria are clearly defined.
 
 **Recommendation**: Proceed to task breakdown (`/speckit.tasks`) and begin Phase 1 implementation.
 

@@ -1,7 +1,7 @@
 /**
  * Authentication Helper Utilities
  * 
- * Provides JWT token management for agent-client including:
+ * Provides JWT token management for agent-manager including:
  * - Token extraction from requests
  * - Token validation
  * - Header generation
@@ -44,11 +44,11 @@ export function getTokenFromRequest(request: NextRequest): string | undefined {
 }
 
 /**
- * Get session data from agent-client-session cookie
+ * Get session data from agent-manager-session cookie
  * This is set by the SSO flow
  */
 export function getSessionFromRequest(request: NextRequest): { userId: string; email: string; roles: string[] } | null {
-  const sessionCookie = request.cookies.get('agent-client-session');
+  const sessionCookie = request.cookies.get('agent-manager-session');
   if (!sessionCookie) {
     return null;
   }

@@ -21,7 +21,7 @@ Use Next.js 15 Route Handlers with `ReadableStream` for SSE responses, combined 
 - Next.js 15 App Router provides native support for streaming responses via `ReadableStream`
 - `EventSource` API is well-supported in modern browsers and handles SSE protocol automatically
 - Custom hook encapsulates connection management, reconnection logic, and state updates
-- Proxy pattern allows agent-client to add authentication headers before forwarding to agent-server
+- Proxy pattern allows agent-manager to add authentication headers before forwarding to agent-server
 
 ### Alternatives Considered
 
@@ -289,7 +289,7 @@ export function MessageInput({
 # In busibox-ui
 npm link
 
-# In agent-client or ai-portal
+# In agent-manager or ai-portal
 npm link @busibox/ui
 
 # Watch mode in busibox-ui
@@ -544,7 +544,7 @@ Migrate chat components to busibox-ui in phases:
 2. Make API calls configurable via props
 3. Update AI Portal to use busibox-ui
 4. Test thoroughly before proceeding
-5. Add agent-specific extensions in agent-client
+5. Add agent-specific extensions in agent-manager
 
 ### Rationale
 

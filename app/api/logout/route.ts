@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server';
 /**
  * POST /api/logout
  *
- * Clears auth cookies used by agent-client.
+ * Clears auth cookies used by agent-manager.
  */
 export async function POST() {
   const res = NextResponse.json({ success: true });

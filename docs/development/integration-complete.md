@@ -2,7 +2,7 @@
 
 ## Summary
 
-Successfully integrated the agent-client (Next.js) with the new Python agent-server (FastAPI + Pydantic AI).
+Successfully integrated the agent-manager (Next.js) with the new Python agent-server (FastAPI + Pydantic AI).
 
 ## What Was Built
 
@@ -84,7 +84,7 @@ User Query → Next.js API → Python Agent Server
 
 ### Local Testing
 ```bash
-cd /Users/wessonnenreich/Code/sonnenreich/agent-client
+cd /Users/wessonnenreich/Code/sonnenreich/agent-manager
 npm install
 npm run dev
 # Visit http://localhost:3000/weather
@@ -111,13 +111,13 @@ npm run dev
 ### Busibox Deployment
 ```bash
 cd /path/to/busibox/provision/ansible
-make deploy-agent-client
+make deploy-agent-manager
 ```
 
 ### Environment Variables (Ansible Vault)
 ```yaml
 secrets:
-  agent-client:
+  agent-manager:
     admin_client_id: "admin-ui-client"
     admin_client_secret: "{{ vault_admin_client_secret }}"
     agent_api_url: "http://10.96.201.202:4111"
@@ -148,7 +148,7 @@ secrets:
                          │ POST /api/agent/weather
                          ↓
 ┌─────────────────────────────────────────────────────────────┐
-│                   Next.js (agent-client)                     │
+│                   Next.js (agent-manager)                     │
 │  ┌──────────────────────────────────────────────────────┐   │
 │  │         API Route: /api/agent/weather                │   │
 │  │  1. Get admin token (OAuth 2.0)                      │   │
@@ -277,7 +277,7 @@ eventSource.onmessage = (event) => {
 
 ## Conclusion
 
-The agent-client is now successfully integrated with the Python agent-server, demonstrating:
+The agent-manager is now successfully integrated with the Python agent-server, demonstrating:
 
 1. **OAuth 2.0 authentication** with token propagation
 2. **Role-based access control** with scope checking

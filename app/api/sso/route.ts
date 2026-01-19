@@ -43,7 +43,7 @@ export async function GET(request: NextRequest) {
 
     // Store session in cookie (or your session store)
     const cookieStore = await cookies();
-    cookieStore.set('agent-client-session', JSON.stringify(sessionData), {
+    cookieStore.set('agent-manager-session', JSON.stringify(sessionData), {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
@@ -93,7 +93,7 @@ export async function POST(request: NextRequest) {
 
     // Store session in cookie
     const cookieStore = await cookies();
-    cookieStore.set('agent-client-session', JSON.stringify(sessionData), {
+    cookieStore.set('agent-manager-session', JSON.stringify(sessionData), {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',

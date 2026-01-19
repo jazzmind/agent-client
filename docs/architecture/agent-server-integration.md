@@ -1,10 +1,10 @@
 # Agent Server Integration
 
-This document describes the integration between the agent-client (Next.js) and the new Python agent-server.
+This document describes the integration between the agent-manager (Next.js) and the new Python agent-server.
 
 ## Overview
 
-The agent-client now supports both:
+The agent-manager now supports both:
 1. **Legacy Mastra Server** (Node.js) - Original agent server
 2. **Python Agent Server** (FastAPI + Pydantic AI) - New agent server with LiteLLM integration
 
@@ -13,7 +13,7 @@ The agent-client now supports both:
 ```
 Browser
   ↓
-Next.js App (agent-client)
+Next.js App (agent-manager)
   ↓
 Next.js API Routes (/api/agent/*)
   ↓
@@ -125,7 +125,7 @@ if (!hasWeatherAccess) {
 
 ### Required Variables
 
-**`.env.local`** (agent-client):
+**`.env.local`** (agent-manager):
 ```bash
 # Python Agent Server URL
 NEXT_PUBLIC_AGENT_API_URL=http://10.96.201.202:4111
@@ -199,7 +199,7 @@ GET http://10.96.201.202:4111/health
 
 ### 1. Start Agent Client
 ```bash
-cd /Users/wessonnenreich/Code/sonnenreich/agent-client
+cd /Users/wessonnenreich/Code/sonnenreich/agent-manager
 npm run dev
 ```
 
@@ -228,11 +228,11 @@ To test access denial:
 ## Deployment
 
 ### Busibox Deployment
-The agent-client is deployed via Ansible to apps-lxc:
+The agent-manager is deployed via Ansible to apps-lxc:
 
 ```bash
 cd /path/to/busibox/provision/ansible
-make deploy-agent-client
+make deploy-agent-manager
 ```
 
 ### Environment Variables on Busibox
@@ -240,7 +240,7 @@ Managed via Ansible vault:
 ```yaml
 # provision/ansible/roles/secrets/vars/vault.yml
 secrets:
-  agent-client:
+  agent-manager:
     admin_client_id: "admin-ui-client"
     admin_client_secret: "{{ vault_admin_client_secret }}"
     agent_api_url: "http://10.96.201.202:4111"
@@ -334,7 +334,7 @@ Allow users to:
 ## References
 
 - **Agent Server**: `/Users/wessonnenreich/Code/sonnenreich/busibox/srv/agent/`
-- **Agent Client**: `/Users/wessonnenreich/Code/sonnenreich/agent-client/`
+- **Agent Client**: `/Users/wessonnenreich/Code/sonnenreich/agent-manager/`
 - **Busibox Deployment**: `/Users/wessonnenreich/Code/sonnenreich/busibox/provision/ansible/`
 - **Model Registry**: `/Users/wessonnenreich/Code/sonnenreich/busibox/provision/ansible/group_vars/all/model_registry.yml`
 

@@ -3,7 +3,7 @@
 **Feature Branch**: `001-agent-management-rebuild`  
 **Created**: 2025-01-11  
 **Status**: Draft  
-**Input**: User description: "Rebuild agent-client to fully manage agents via Python agent-server API with chat components in busibox-ui, visual workflow builder, LLM-assisted design, and comprehensive admin interface"
+**Input**: User description: "Rebuild agent-manager to fully manage agents via Python agent-server API with chat components in busibox-ui, visual workflow builder, LLM-assisted design, and comprehensive admin interface"
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -405,7 +405,7 @@ Administrators need to view available tools, understand their capabilities, crea
 - Agent-server provides SSE streaming for run status updates including routing decisions
 - Built-in agents (dispatcher, search, RAG, ingest, chat) are hardcoded in agent-server and cannot be modified via UI
 - Users have modern browsers with SSE support (Chrome 6+, Firefox 6+, Safari 5+, Edge 79+)
-- Network latency between agent-client and agent-server is under 100ms
+- Network latency between agent-manager and agent-server is under 100ms
 - Agent executions complete within tier timeout limits (simple: 30s, complex: 5min, batch: 30min)
 - LLM responses for agent design assistance are coherent and follow expected JSON formats
 - Workflow execution is sequential (no parallel step execution in MVP)

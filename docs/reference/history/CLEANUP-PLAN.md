@@ -538,7 +538,7 @@ NEXT_PUBLIC_INGEST_API_URL=http://10.96.200.206:8001
 ### 1. Backup Current Code
 
 ```bash
-cd /Users/wessonnenreich/Code/sonnenreich/agent-client
+cd /Users/wessonnenreich/Code/sonnenreich/agent-manager
 git checkout -b remove-database-access
 ```
 

@@ -10,7 +10,7 @@
 
 ### 1. Agent-Client is a Frontend Only
 
-The agent-client is **purely a UI/UX layer** that orchestrates calls to backend APIs:
+The agent-manager is **purely a UI/UX layer** that orchestrates calls to backend APIs:
 
 ```
 ┌─────────────────────────────────────────────────────────┐
@@ -70,8 +70,8 @@ The agent-client is **purely a UI/UX layer** that orchestrates calls to backend 
 
 ❌ **NEVER**:
 - Direct database connections (Prisma, TypeORM, etc.)
-- Database migrations in agent-client
-- SQL queries from agent-client
+- Database migrations in agent-manager
+- SQL queries from agent-manager
 
 ✅ **ALWAYS**:
 - Call agent-server API for data
@@ -412,7 +412,7 @@ export async function POST(request: NextRequest) {
 
 1. Deploy ingest API updates
 2. Deploy agent-server updates
-3. Deploy agent-client updates
+3. Deploy agent-manager updates
 4. Verify no database connections from client
 
 ---

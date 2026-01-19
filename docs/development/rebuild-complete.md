@@ -231,7 +231,7 @@ npm run build
 npm run db:push
 
 # 3. Start with PM2
-pm2 start ecosystem.config.js --name agent-client
+pm2 start ecosystem.config.js --name agent-manager
 
 # 4. Verify
 curl http://localhost:3000/api/health
@@ -361,7 +361,7 @@ npm run lint
 
 ## 🎊 Conclusion
 
-The agent-client rebuild is **COMPLETE and PRODUCTION READY**!
+The agent-manager rebuild is **COMPLETE and PRODUCTION READY**!
 
 **Core functionality** (chat, agents, persistence, streaming) is fully implemented and tested.
 

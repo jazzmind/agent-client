@@ -8,7 +8,7 @@
 
 ## Summary
 
-Successfully removed all database access from agent-client and refactored to use agent-server and ingest API exclusively. Agent-client is now a pure frontend that proxies to backend APIs.
+Successfully removed all database access from agent-manager and refactored to use agent-server and ingest API exclusively. Agent-client is now a pure frontend that proxies to backend APIs.
 
 ---
 
@@ -296,7 +296,7 @@ Once agent-server implements conversation endpoints:
 
 ## Conclusion
 
-The agent-client has been successfully refactored to be a pure frontend application with no database access. All data operations now go through the agent-server and ingest API, following proper microservices architecture.
+The agent-manager has been successfully refactored to be a pure frontend application with no database access. All data operations now go through the agent-server and ingest API, following proper microservices architecture.
 
 **Status**: ✅ **COMPLETE AND READY FOR INTEGRATION**
 

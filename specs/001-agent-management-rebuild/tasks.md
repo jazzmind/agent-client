@@ -15,7 +15,7 @@
 
 ## Path Conventions
 
-- **agent-client**: Next.js app at `/Users/wessonnenreich/Code/sonnenreich/agent-client/`
+- **agent-manager**: Next.js app at `/Users/wessonnenreich/Code/sonnenreich/agent-manager/`
 - **busibox-ui**: Shared library at `/Users/wessonnenreich/Code/sonnenreich/busibox-ui/`
 - Paths shown below use relative paths from repository root
 
@@ -25,13 +25,13 @@
 
 **Purpose**: Project initialization and basic structure
 
-- [x] T001 Verify Next.js 15 and React 19 are installed in agent-client/package.json
-- [x] T002 Verify TypeScript 5.x configuration in agent-client/tsconfig.json with strict mode
-- [x] T003 [P] Install React Flow package: `npm install reactflow` in agent-client/
-- [x] T004 [P] Verify Vitest and React Testing Library in agent-client/package.json
-- [x] T005 [P] Verify Storybook configuration in agent-client/.storybook/
-- [x] T006 [P] Create agent-client/lib/types.ts with shared TypeScript types from data-model.md
-- [x] T007 [P] Create agent-client/.env.example with AGENT_SERVER_URL and other required variables
+- [x] T001 Verify Next.js 15 and React 19 are installed in agent-manager/package.json
+- [x] T002 Verify TypeScript 5.x configuration in agent-manager/tsconfig.json with strict mode
+- [x] T003 [P] Install React Flow package: `npm install reactflow` in agent-manager/
+- [x] T004 [P] Verify Vitest and React Testing Library in agent-manager/package.json
+- [x] T005 [P] Verify Storybook configuration in agent-manager/.storybook/
+- [x] T006 [P] Create agent-manager/lib/types.ts with shared TypeScript types from data-model.md
+- [x] T007 [P] Create agent-manager/.env.example with AGENT_SERVER_URL and other required variables
 - [x] T008 [P] Verify busibox-ui package exists and has tsup build configuration
 - [ ] T009 [P] Set up npm link for local busibox-ui development per quickstart.md
 
@@ -43,17 +43,17 @@
 
 **⚠️ CRITICAL**: No user story work can begin until this phase is complete
 
-- [ ] T010 Create comprehensive AgentAPIClient class in agent-client/lib/agent-api-client.ts with all agent-server endpoints
-- [ ] T011 [P] Create SSE client utility in agent-client/lib/sse-client.ts for streaming connections
-- [ ] T012 [P] Create useRunStream hook in agent-client/hooks/useRunStream.ts for SSE streaming
-- [ ] T013 [P] Create API proxy route handler in agent-client/app/api/agents/route.ts (GET, POST)
-- [ ] T014 [P] Create API proxy route handler in agent-client/app/api/agents/definitions/[id]/route.ts (PUT)
-- [ ] T015 [P] Create API proxy route handler in agent-client/app/api/runs/route.ts (GET, POST)
-- [ ] T016 [P] Create API proxy route handler in agent-client/app/api/runs/[id]/route.ts (GET)
-- [ ] T017 [P] Create API proxy route handler in agent-client/app/api/streams/runs/[id]/route.ts (SSE streaming)
-- [ ] T018 [P] Create API proxy route handler in agent-client/app/api/models/route.ts (GET)
-- [ ] T019 [P] Create error handling middleware in agent-client/lib/error-handler.ts
-- [ ] T020 [P] Create authentication helper in agent-client/lib/auth-helper.ts for JWT token management
+- [ ] T010 Create comprehensive AgentAPIClient class in agent-manager/lib/agent-api-client.ts with all agent-server endpoints
+- [ ] T011 [P] Create SSE client utility in agent-manager/lib/sse-client.ts for streaming connections
+- [ ] T012 [P] Create useRunStream hook in agent-manager/hooks/useRunStream.ts for SSE streaming
+- [ ] T013 [P] Create API proxy route handler in agent-manager/app/api/agents/route.ts (GET, POST)
+- [ ] T014 [P] Create API proxy route handler in agent-manager/app/api/agents/definitions/[id]/route.ts (PUT)
+- [ ] T015 [P] Create API proxy route handler in agent-manager/app/api/runs/route.ts (GET, POST)
+- [ ] T016 [P] Create API proxy route handler in agent-manager/app/api/runs/[id]/route.ts (GET)
+- [ ] T017 [P] Create API proxy route handler in agent-manager/app/api/streams/runs/[id]/route.ts (SSE streaming)
+- [ ] T018 [P] Create API proxy route handler in agent-manager/app/api/models/route.ts (GET)
+- [ ] T019 [P] Create error handling middleware in agent-manager/lib/error-handler.ts
+- [ ] T020 [P] Create authentication helper in agent-manager/lib/auth-helper.ts for JWT token management
 
 **Checkpoint**: Foundation ready - user story implementation can now begin in parallel
 
@@ -87,16 +87,16 @@
 
 ### Agent-Client Chat Implementation
 
-- [ ] T038 [P] [US1] Create RunStatusIndicator component in agent-client/components/chat/RunStatusIndicator.tsx
-- [ ] T039 [P] [US1] Create ToolCallViewer component in agent-client/components/chat/ToolCallViewer.tsx for expandable tool calls
-- [ ] T040 [P] [US1] Create EventTimeline component in agent-client/components/chat/EventTimeline.tsx
-- [ ] T041 [P] [US1] Create DispatcherFeedback component in agent-client/components/chat/DispatcherFeedback.tsx for routing decisions
-- [ ] T042 [P] [US1] Create DispatcherSettings component in agent-client/app/chat/components/DispatcherSettings.tsx for advanced settings
-- [ ] T043 [P] [US1] Create RoutingVisualization component in agent-client/app/chat/components/RoutingVisualization.tsx
-- [ ] T044 [P] [US1] Create ToolAgentSelector component in agent-client/app/chat/components/ToolAgentSelector.tsx
-- [ ] T045 [US1] Create AgentChat component in agent-client/components/chat/AgentChat.tsx that extends busibox-ui chat
-- [ ] T046 [US1] Create chat page in agent-client/app/chat/page.tsx using AgentChat component
-- [ ] T047 [US1] Add chat navigation link to agent-client/components/layout/Header.tsx
+- [ ] T038 [P] [US1] Create RunStatusIndicator component in agent-manager/components/chat/RunStatusIndicator.tsx
+- [ ] T039 [P] [US1] Create ToolCallViewer component in agent-manager/components/chat/ToolCallViewer.tsx for expandable tool calls
+- [ ] T040 [P] [US1] Create EventTimeline component in agent-manager/components/chat/EventTimeline.tsx
+- [ ] T041 [P] [US1] Create DispatcherFeedback component in agent-manager/components/chat/DispatcherFeedback.tsx for routing decisions
+- [ ] T042 [P] [US1] Create DispatcherSettings component in agent-manager/app/chat/components/DispatcherSettings.tsx for advanced settings
+- [ ] T043 [P] [US1] Create RoutingVisualization component in agent-manager/app/chat/components/RoutingVisualization.tsx
+- [ ] T044 [P] [US1] Create ToolAgentSelector component in agent-manager/app/chat/components/ToolAgentSelector.tsx
+- [ ] T045 [US1] Create AgentChat component in agent-manager/components/chat/AgentChat.tsx that extends busibox-ui chat
+- [ ] T046 [US1] Create chat page in agent-manager/app/chat/page.tsx using AgentChat component
+- [ ] T047 [US1] Add chat navigation link to agent-manager/components/layout/Header.tsx
 - [ ] T048 [US1] Implement disambiguation modal for low-confidence dispatcher decisions
 - [ ] T049 [US1] Add retry and stop functionality to chat interface
 - [ ] T050 [US1] Test chat with various queries and verify dispatcher routing (manual verification)
@@ -113,13 +113,13 @@
 
 ### Agent Management Implementation
 
-- [ ] T051 [P] [US2] Create useAgents hook in agent-client/hooks/useAgents.ts for agent CRUD operations
-- [ ] T052 [P] [US2] Create AgentList component in agent-client/components/admin/AgentList.tsx with filtering and search
-- [ ] T053 [P] [US2] Create AgentEditor component in agent-client/components/admin/AgentEditor.tsx with form validation
-- [ ] T054 [P] [US2] Create AgentTester component in agent-client/components/admin/AgentTester.tsx for quick test runs
-- [ ] T055 [US2] Create agent management page in agent-client/app/admin/agents/page.tsx
-- [ ] T056 [US2] Create new agent page in agent-client/app/admin/agents/new/page.tsx
-- [ ] T057 [US2] Create agent detail/edit page in agent-client/app/admin/agents/[id]/page.tsx
+- [ ] T051 [P] [US2] Create useAgents hook in agent-manager/hooks/useAgents.ts for agent CRUD operations
+- [ ] T052 [P] [US2] Create AgentList component in agent-manager/components/admin/AgentList.tsx with filtering and search
+- [ ] T053 [P] [US2] Create AgentEditor component in agent-manager/components/admin/AgentEditor.tsx with form validation
+- [ ] T054 [P] [US2] Create AgentTester component in agent-manager/components/admin/AgentTester.tsx for quick test runs
+- [ ] T055 [US2] Create agent management page in agent-manager/app/admin/agents/page.tsx
+- [ ] T056 [US2] Create new agent page in agent-manager/app/admin/agents/new/page.tsx
+- [ ] T057 [US2] Create agent detail/edit page in agent-manager/app/admin/agents/[id]/page.tsx
 - [ ] T058 [US2] Add agent management navigation link to admin sidebar
 - [ ] T059 [US2] Implement personal agent privacy filtering (only show user's own personal agents)
 - [ ] T060 [US2] Add tool selection interface with available tools from agent-server
@@ -139,22 +139,22 @@
 
 ### Workflow Builder Implementation
 
-- [ ] T064 [P] [US3] Create workflow-converter utility in agent-client/lib/workflow-converter.ts to convert React Flow graph to agent-server format
-- [ ] T065 [P] [US3] Create useWorkflows hook in agent-client/hooks/useWorkflows.ts for workflow CRUD operations
-- [ ] T066 [P] [US3] Create AgentNode component in agent-client/components/admin/WorkflowNodes/AgentNode.tsx
-- [ ] T067 [P] [US3] Create ToolNode component in agent-client/components/admin/WorkflowNodes/ToolNode.tsx
-- [ ] T068 [P] [US3] Create ConditionNode component in agent-client/components/admin/WorkflowNodes/ConditionNode.tsx
-- [ ] T069 [P] [US3] Create InputNode component in agent-client/components/admin/WorkflowNodes/InputNode.tsx
-- [ ] T070 [P] [US3] Create OutputNode component in agent-client/components/admin/WorkflowNodes/OutputNode.tsx
-- [ ] T071 [P] [US3] Create TransformNode component in agent-client/components/admin/WorkflowNodes/TransformNode.tsx
-- [ ] T072 [P] [US3] Create node configuration panels for each node type in agent-client/components/admin/WorkflowNodes/
-- [ ] T073 [US3] Create WorkflowBuilder component in agent-client/components/admin/WorkflowBuilder.tsx with React Flow integration
-- [ ] T074 [US3] Create WorkflowManagement component in agent-client/components/admin/WorkflowManagement.tsx
-- [ ] T075 [US3] Create workflow builder page in agent-client/app/admin/workflows/builder/page.tsx
-- [ ] T076 [US3] Create workflow list page in agent-client/app/admin/workflows/page.tsx
-- [ ] T077 [US3] Create workflow detail/edit page in agent-client/app/admin/workflows/[id]/page.tsx
-- [ ] T078 [US3] Add API proxy routes for workflows in agent-client/app/api/workflows/
-- [ ] T079 [US3] Add API proxy route for workflow execution in agent-client/app/api/runs/workflow/route.ts
+- [ ] T064 [P] [US3] Create workflow-converter utility in agent-manager/lib/workflow-converter.ts to convert React Flow graph to agent-server format
+- [ ] T065 [P] [US3] Create useWorkflows hook in agent-manager/hooks/useWorkflows.ts for workflow CRUD operations
+- [ ] T066 [P] [US3] Create AgentNode component in agent-manager/components/admin/WorkflowNodes/AgentNode.tsx
+- [ ] T067 [P] [US3] Create ToolNode component in agent-manager/components/admin/WorkflowNodes/ToolNode.tsx
+- [ ] T068 [P] [US3] Create ConditionNode component in agent-manager/components/admin/WorkflowNodes/ConditionNode.tsx
+- [ ] T069 [P] [US3] Create InputNode component in agent-manager/components/admin/WorkflowNodes/InputNode.tsx
+- [ ] T070 [P] [US3] Create OutputNode component in agent-manager/components/admin/WorkflowNodes/OutputNode.tsx
+- [ ] T071 [P] [US3] Create TransformNode component in agent-manager/components/admin/WorkflowNodes/TransformNode.tsx
+- [ ] T072 [P] [US3] Create node configuration panels for each node type in agent-manager/components/admin/WorkflowNodes/
+- [ ] T073 [US3] Create WorkflowBuilder component in agent-manager/components/admin/WorkflowBuilder.tsx with React Flow integration
+- [ ] T074 [US3] Create WorkflowManagement component in agent-manager/components/admin/WorkflowManagement.tsx
+- [ ] T075 [US3] Create workflow builder page in agent-manager/app/admin/workflows/builder/page.tsx
+- [ ] T076 [US3] Create workflow list page in agent-manager/app/admin/workflows/page.tsx
+- [ ] T077 [US3] Create workflow detail/edit page in agent-manager/app/admin/workflows/[id]/page.tsx
+- [ ] T078 [US3] Add API proxy routes for workflows in agent-manager/app/api/workflows/
+- [ ] T079 [US3] Add API proxy route for workflow execution in agent-manager/app/api/runs/workflow/route.ts
 - [ ] T080 [US3] Implement workflow validation (no cycles, no disconnected nodes, missing configs)
 - [ ] T081 [US3] Add workflow execution monitoring with SSE streaming
 - [ ] T082 [US3] Test workflow creation, editing, validation, and execution (manual verification)
@@ -171,11 +171,11 @@
 
 ### LLM-Assisted Design Implementation
 
-- [ ] T083 [P] [US4] Create agent-designer client in agent-client/lib/agent-designer.ts to call agent-server designer agent
-- [ ] T084 [P] [US4] Create AgentDesignAssistant component in agent-client/components/admin/AgentDesignAssistant.tsx
-- [ ] T085 [P] [US4] Create ValidationResults component in agent-client/components/admin/ValidationResults.tsx
-- [ ] T086 [P] [US4] Create RefinementChat component in agent-client/components/admin/RefinementChat.tsx
-- [ ] T087 [US4] Integrate AgentDesignAssistant into agent creation flow in agent-client/app/admin/agents/new/page.tsx
+- [ ] T083 [P] [US4] Create agent-designer client in agent-manager/lib/agent-designer.ts to call agent-server designer agent
+- [ ] T084 [P] [US4] Create AgentDesignAssistant component in agent-manager/components/admin/AgentDesignAssistant.tsx
+- [ ] T085 [P] [US4] Create ValidationResults component in agent-manager/components/admin/ValidationResults.tsx
+- [ ] T086 [P] [US4] Create RefinementChat component in agent-manager/components/admin/RefinementChat.tsx
+- [ ] T087 [US4] Integrate AgentDesignAssistant into agent creation flow in agent-manager/app/admin/agents/new/page.tsx
 - [ ] T088 [US4] Add "Design with AI" button to agent editor
 - [ ] T089 [US4] Implement natural language → agent config generation
 - [ ] T090 [US4] Implement agent validation with suggestions
@@ -195,13 +195,13 @@
 
 ### Run Management Implementation
 
-- [ ] T094 [P] [US5] Create useRuns hook in agent-client/hooks/useRuns.ts for run queries and filtering
-- [ ] T095 [P] [US5] Create RunManagement component in agent-client/components/admin/RunManagement.tsx with filters
-- [ ] T096 [P] [US5] Create RunDetail component in agent-client/components/admin/RunDetail.tsx
-- [ ] T097 [P] [US5] Create RunComparison component in agent-client/components/admin/RunComparison.tsx
-- [ ] T098 [P] [US5] Create PerformanceDashboard component in agent-client/components/admin/PerformanceDashboard.tsx
-- [ ] T099 [US5] Create run management page in agent-client/app/admin/runs/page.tsx
-- [ ] T100 [US5] Create run detail page in agent-client/app/admin/runs/[id]/page.tsx
+- [ ] T094 [P] [US5] Create useRuns hook in agent-manager/hooks/useRuns.ts for run queries and filtering
+- [ ] T095 [P] [US5] Create RunManagement component in agent-manager/components/admin/RunManagement.tsx with filters
+- [ ] T096 [P] [US5] Create RunDetail component in agent-manager/components/admin/RunDetail.tsx
+- [ ] T097 [P] [US5] Create RunComparison component in agent-manager/components/admin/RunComparison.tsx
+- [ ] T098 [P] [US5] Create PerformanceDashboard component in agent-manager/components/admin/PerformanceDashboard.tsx
+- [ ] T099 [US5] Create run management page in agent-manager/app/admin/runs/page.tsx
+- [ ] T100 [US5] Create run detail page in agent-manager/app/admin/runs/[id]/page.tsx
 - [ ] T101 [US5] Implement run filtering by agent, status, date range, and created_by
 - [ ] T102 [US5] Implement pagination for run list (50 runs per page)
 - [ ] T103 [US5] Implement run comparison view (side-by-side up to 3 runs)
@@ -222,10 +222,10 @@
 
 ### Schedule Management Implementation
 
-- [ ] T108 [P] [US6] Create CronBuilder component in agent-client/components/admin/CronBuilder.tsx for visual cron expression building
-- [ ] T109 [P] [US6] Create ScheduleManagement component in agent-client/components/admin/ScheduleManagement.tsx
-- [ ] T110 [US6] Create schedule management page in agent-client/app/admin/schedules/page.tsx
-- [ ] T111 [US6] Add API proxy routes for schedules in agent-client/app/api/schedules/
+- [ ] T108 [P] [US6] Create CronBuilder component in agent-manager/components/admin/CronBuilder.tsx for visual cron expression building
+- [ ] T109 [P] [US6] Create ScheduleManagement component in agent-manager/components/admin/ScheduleManagement.tsx
+- [ ] T110 [US6] Create schedule management page in agent-manager/app/admin/schedules/page.tsx
+- [ ] T111 [US6] Add API proxy routes for schedules in agent-manager/app/api/schedules/
 - [ ] T112 [US6] Implement schedule creation with agent selection, input, and cron expression
 - [ ] T113 [US6] Display next run time calculation
 - [ ] T114 [US6] Implement schedule activation/deactivation toggle
@@ -246,10 +246,10 @@
 
 ### Evaluation Management Implementation
 
-- [ ] T119 [P] [US7] Create EvaluationManagement component in agent-client/components/admin/EvaluationManagement.tsx
-- [ ] T120 [US7] Create evaluation management page in agent-client/app/admin/evaluations/page.tsx
-- [ ] T121 [US7] Add API proxy routes for evaluations in agent-client/app/api/evals/
-- [ ] T122 [US7] Add API proxy routes for scores in agent-client/app/api/scores/
+- [ ] T119 [P] [US7] Create EvaluationManagement component in agent-manager/components/admin/EvaluationManagement.tsx
+- [ ] T120 [US7] Create evaluation management page in agent-manager/app/admin/evaluations/page.tsx
+- [ ] T121 [US7] Add API proxy routes for evaluations in agent-manager/app/api/evals/
+- [ ] T122 [US7] Add API proxy routes for scores in agent-manager/app/api/scores/
 - [ ] T123 [US7] Implement scorer creation with criteria definition
 - [ ] T124 [US7] Implement scorer execution against selected runs
 - [ ] T125 [US7] Display individual scores with pass/fail status
@@ -270,9 +270,9 @@
 
 ### Tool Management Implementation
 
-- [ ] T130 [P] [US8] Create ToolManagement component in agent-client/components/admin/ToolManagement.tsx
-- [ ] T131 [US8] Create tool management page in agent-client/app/admin/tools/page.tsx
-- [ ] T132 [US8] Add API proxy routes for tools in agent-client/app/api/tools/
+- [ ] T130 [P] [US8] Create ToolManagement component in agent-manager/components/admin/ToolManagement.tsx
+- [ ] T131 [US8] Create tool management page in agent-manager/app/admin/tools/page.tsx
+- [ ] T132 [US8] Add API proxy routes for tools in agent-manager/app/api/tools/
 - [ ] T133 [US8] Implement tool catalog view with built-in and custom tools
 - [ ] T134 [US8] Display tool schemas (input/output definitions)
 - [ ] T135 [US8] Implement custom tool creation with schema editor
@@ -289,9 +289,9 @@
 
 **Goal**: Add rate limit monitoring, usage tracking, and comprehensive admin dashboard.
 
-- [ ] T140 [P] Create GuardrailsView component in agent-client/components/admin/GuardrailsView.tsx
-- [ ] T141 [P] Update admin dashboard in agent-client/app/admin/page.tsx with metrics and quick actions
-- [ ] T142 Add guardrails page in agent-client/app/admin/guardrails/page.tsx
+- [ ] T140 [P] Create GuardrailsView component in agent-manager/components/admin/GuardrailsView.tsx
+- [ ] T141 [P] Update admin dashboard in agent-manager/app/admin/page.tsx with metrics and quick actions
+- [ ] T142 Add guardrails page in agent-manager/app/admin/guardrails/page.tsx
 - [ ] T143 Display rate limits and usage by user/agent
 - [ ] T144 Add admin dashboard charts: active agents, recent runs, system health
 - [ ] T145 Add quick actions to dashboard: create agent, view recent runs, check schedules
@@ -309,7 +309,7 @@
 - [ ] T150 [P] Add keyboard shortcuts for common actions
 - [ ] T151 [P] Optimize bundle size with code splitting
 - [ ] T152 [P] Add accessibility attributes (ARIA labels, roles)
-- [ ] T153 [P] Create comprehensive documentation in agent-client/docs/
+- [ ] T153 [P] Create comprehensive documentation in agent-manager/docs/
 - [ ] T154 [P] Create Storybook stories for all shared components
 - [ ] T155 Code cleanup and refactoring across all components
 - [ ] T156 Performance optimization: lazy loading, memoization, virtualization
@@ -326,23 +326,23 @@
 
 ### Unit Tests (Optional)
 
-- [ ] T161 [P] Write unit tests for AgentAPIClient in agent-client/tests/unit/agent-api-client.test.ts
-- [ ] T162 [P] Write unit tests for useRunStream hook in agent-client/tests/unit/useRunStream.test.ts
-- [ ] T163 [P] Write unit tests for workflow-converter in agent-client/tests/unit/workflow-converter.test.ts
-- [ ] T164 [P] Write unit tests for agent-designer in agent-client/tests/unit/agent-designer.test.ts
-- [ ] T165 [P] Write unit tests for all React hooks in agent-client/tests/unit/hooks/
+- [ ] T161 [P] Write unit tests for AgentAPIClient in agent-manager/tests/unit/agent-api-client.test.ts
+- [ ] T162 [P] Write unit tests for useRunStream hook in agent-manager/tests/unit/useRunStream.test.ts
+- [ ] T163 [P] Write unit tests for workflow-converter in agent-manager/tests/unit/workflow-converter.test.ts
+- [ ] T164 [P] Write unit tests for agent-designer in agent-manager/tests/unit/agent-designer.test.ts
+- [ ] T165 [P] Write unit tests for all React hooks in agent-manager/tests/unit/hooks/
 
 ### Integration Tests (Optional)
 
-- [ ] T166 [P] Write integration test for chat flow in agent-client/tests/integration/chat.test.ts
-- [ ] T167 [P] Write integration test for agent creation in agent-client/tests/integration/agent-management.test.ts
-- [ ] T168 [P] Write integration test for workflow execution in agent-client/tests/integration/workflow.test.ts
-- [ ] T169 [P] Write integration test for run monitoring in agent-client/tests/integration/run-management.test.ts
+- [ ] T166 [P] Write integration test for chat flow in agent-manager/tests/integration/chat.test.ts
+- [ ] T167 [P] Write integration test for agent creation in agent-manager/tests/integration/agent-management.test.ts
+- [ ] T168 [P] Write integration test for workflow execution in agent-manager/tests/integration/workflow.test.ts
+- [ ] T169 [P] Write integration test for run monitoring in agent-manager/tests/integration/run-management.test.ts
 
 ### Component Tests (Optional)
 
 - [ ] T170 [P] Create Storybook stories for all busibox-ui chat components
-- [ ] T171 [P] Create Storybook stories for all agent-client admin components
+- [ ] T171 [P] Create Storybook stories for all agent-manager admin components
 - [ ] T172 [P] Write visual regression tests with Chromatic
 
 ---
@@ -429,7 +429,7 @@
 
 **User Story 1**:
 - T021-T033 (busibox-ui components and hooks) can all run in parallel
-- T038-T044 (agent-client components) can all run in parallel after busibox-ui is ready
+- T038-T044 (agent-manager components) can all run in parallel after busibox-ui is ready
 
 **User Story 2**:
 - T051-T054 can all run in parallel
@@ -488,14 +488,14 @@ Task: "Create useConversations hook in busibox-ui/src/chat/hooks/useConversation
 Task: "Create useSearchToggles hook in busibox-ui/src/chat/hooks/useSearchToggles.ts"
 Task: "Create useAttachments hook in busibox-ui/src/chat/hooks/useAttachments.ts"
 
-# After busibox-ui is ready, launch all agent-client chat components together:
-Task: "Create RunStatusIndicator component in agent-client/components/chat/RunStatusIndicator.tsx"
-Task: "Create ToolCallViewer component in agent-client/components/chat/ToolCallViewer.tsx"
-Task: "Create EventTimeline component in agent-client/components/chat/EventTimeline.tsx"
-Task: "Create DispatcherFeedback component in agent-client/components/chat/DispatcherFeedback.tsx"
-Task: "Create DispatcherSettings component in agent-client/app/chat/components/DispatcherSettings.tsx"
-Task: "Create RoutingVisualization component in agent-client/app/chat/components/RoutingVisualization.tsx"
-Task: "Create ToolAgentSelector component in agent-client/app/chat/components/ToolAgentSelector.tsx"
+# After busibox-ui is ready, launch all agent-manager chat components together:
+Task: "Create RunStatusIndicator component in agent-manager/components/chat/RunStatusIndicator.tsx"
+Task: "Create ToolCallViewer component in agent-manager/components/chat/ToolCallViewer.tsx"
+Task: "Create EventTimeline component in agent-manager/components/chat/EventTimeline.tsx"
+Task: "Create DispatcherFeedback component in agent-manager/components/chat/DispatcherFeedback.tsx"
+Task: "Create DispatcherSettings component in agent-manager/app/chat/components/DispatcherSettings.tsx"
+Task: "Create RoutingVisualization component in agent-manager/app/chat/components/RoutingVisualization.tsx"
+Task: "Create ToolAgentSelector component in agent-manager/app/chat/components/ToolAgentSelector.tsx"
 ```
 
 ---
@@ -504,10 +504,10 @@ Task: "Create ToolAgentSelector component in agent-client/app/chat/components/To
 
 ```bash
 # Launch all hooks and components together:
-Task: "Create useAgents hook in agent-client/hooks/useAgents.ts"
-Task: "Create AgentList component in agent-client/components/admin/AgentList.tsx"
-Task: "Create AgentEditor component in agent-client/components/admin/AgentEditor.tsx"
-Task: "Create AgentTester component in agent-client/components/admin/AgentTester.tsx"
+Task: "Create useAgents hook in agent-manager/hooks/useAgents.ts"
+Task: "Create AgentList component in agent-manager/components/admin/AgentList.tsx"
+Task: "Create AgentEditor component in agent-manager/components/admin/AgentEditor.tsx"
+Task: "Create AgentTester component in agent-manager/components/admin/AgentTester.tsx"
 ```
 
 ---
@@ -516,12 +516,12 @@ Task: "Create AgentTester component in agent-client/components/admin/AgentTester
 
 ```bash
 # Launch all node components together after converter is ready:
-Task: "Create AgentNode component in agent-client/components/admin/WorkflowNodes/AgentNode.tsx"
-Task: "Create ToolNode component in agent-client/components/admin/WorkflowNodes/ToolNode.tsx"
-Task: "Create ConditionNode component in agent-client/components/admin/WorkflowNodes/ConditionNode.tsx"
-Task: "Create InputNode component in agent-client/components/admin/WorkflowNodes/InputNode.tsx"
-Task: "Create OutputNode component in agent-client/components/admin/WorkflowNodes/OutputNode.tsx"
-Task: "Create TransformNode component in agent-client/components/admin/WorkflowNodes/TransformNode.tsx"
+Task: "Create AgentNode component in agent-manager/components/admin/WorkflowNodes/AgentNode.tsx"
+Task: "Create ToolNode component in agent-manager/components/admin/WorkflowNodes/ToolNode.tsx"
+Task: "Create ConditionNode component in agent-manager/components/admin/WorkflowNodes/ConditionNode.tsx"
+Task: "Create InputNode component in agent-manager/components/admin/WorkflowNodes/InputNode.tsx"
+Task: "Create OutputNode component in agent-manager/components/admin/WorkflowNodes/OutputNode.tsx"
+Task: "Create TransformNode component in agent-manager/components/admin/WorkflowNodes/TransformNode.tsx"
 Task: "Create node configuration panels for each node type"
 ```
 

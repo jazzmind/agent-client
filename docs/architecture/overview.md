@@ -52,7 +52,7 @@
 
 ### 1. Frontend-Only Design
 
-The agent-client is **purely a frontend application**:
+The agent-manager is **purely a frontend application**:
 
 ✅ **Does**:
 - Displays UI components

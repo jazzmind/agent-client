@@ -4,7 +4,7 @@ import { NextResponse } from 'next/server';
  * GET /api/version
  *
  * Shared shape expected by @jazzmind/busibox-app `VersionBar`.
- * This is intentionally lightweight for agent-client.
+ * This is intentionally lightweight for agent-manager.
  */
 export async function GET() {
   const version = process.env.NEXT_PUBLIC_VERSION || '';
@@ -20,7 +20,7 @@ export async function GET() {
       commit,
       shortCommit,
       deployed_at: null,
-      deployed_by: 'agent-client',
+      deployed_by: 'agent-manager',
     },
   });
 }

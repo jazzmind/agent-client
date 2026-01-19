@@ -6,12 +6,12 @@ import { getTokenFromRequest, getSessionFromRequest, getUserRolesFromToken, pars
  *
  * Lightweight session endpoint for UI chrome (navbar/user dropdown).
  * Derives user identity from:
- * 1. agent-client-session cookie (set by SSO flow)
+ * 1. agent-manager-session cookie (set by SSO flow)
  * 2. JWT token (cookie or Authorization header)
  * 3. TEST_USER env vars (local dev fallback)
  */
 export async function GET(request: NextRequest) {
-  // First check for agent-client-session cookie (set by SSO flow)
+  // First check for agent-manager-session cookie (set by SSO flow)
   const ssoSession = getSessionFromRequest(request);
   if (ssoSession) {
     return NextResponse.json({

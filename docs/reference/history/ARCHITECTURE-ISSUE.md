@@ -8,7 +8,7 @@
 
 ## Problem
 
-The agent-client is **directly accessing the database** via Prisma, which violates the architecture principle that **all data operations should go through the agent-server API**.
+The agent-manager is **directly accessing the database** via Prisma, which violates the architecture principle that **all data operations should go through the agent-server API**.
 
 ### Current Violations
 
@@ -19,7 +19,7 @@ The agent-client is **directly accessing the database** via Prisma, which violat
 4. `app/api/conversations/[id]/route.ts` - Queries/deletes conversations directly from DB
 5. `lib/db.ts` - Prisma client instance
 
-**Database models in agent-client**:
+**Database models in agent-manager**:
 - `Conversation` - Chat conversation metadata
 - `Message` - Individual chat messages
 - `ChatSettings` - User chat preferences
@@ -180,7 +180,7 @@ DELETE /files/{id}
 
 ### Phase 2: Update Agent-Client (AFTER Phase 1)
 
-1. Remove Prisma from agent-client
+1. Remove Prisma from agent-manager
 2. Update API routes to call agent-server
 3. Remove `lib/db.ts`
 4. Remove `prisma/` directory
@@ -248,7 +248,7 @@ DELETE /files/{id}
 1. ✅ Document this issue (this file)
 2. ⚠️ Create agent-server requirements document
 3. ⚠️ Implement agent-server endpoints
-4. ⚠️ Refactor agent-client to remove Prisma
+4. ⚠️ Refactor agent-manager to remove Prisma
 5. ⚠️ Test end-to-end
 6. ⚠️ Deploy
 
@@ -258,7 +258,7 @@ DELETE /files/{id}
 
 **Option A: Fix Now (RECOMMENDED)**
 - Add endpoints to agent-server
-- Remove Prisma from agent-client
+- Remove Prisma from agent-manager
 - Deploy correct architecture
 - **Timeline**: 2-3 days
 - **Risk**: Low
@@ -276,7 +276,7 @@ DELETE /files/{id}
 
 ## Related Files
 
-- `prisma/schema.prisma` - Should be removed from agent-client
+- `prisma/schema.prisma` - Should be removed from agent-manager
 - `lib/db.ts` - Should be removed
 - `app/api/chat/route.ts` - Needs refactoring
 - `app/api/conversations/*.ts` - Needs refactoring

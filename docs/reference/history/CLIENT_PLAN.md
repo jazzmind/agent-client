@@ -9,7 +9,7 @@
 
 ## Overview
 
-Remove all database access from agent-client and refactor to use agent-server and ingest API exclusively. Agent-client should be a pure frontend that proxies to backend APIs.
+Remove all database access from agent-manager and refactor to use agent-server and ingest API exclusively. Agent-client should be a pure frontend that proxies to backend APIs.
 
 ---
 

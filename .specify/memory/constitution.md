@@ -14,7 +14,7 @@ Every UI component that could be useful across multiple Busibox applications MUS
 
 ### II. API-First Design
 
-The agent-client is a pure UI layer. All business logic, data persistence, and AI operations happen in the agent-server backend. The client MUST:
+The agent-manager is a pure UI layer. All business logic, data persistence, and AI operations happen in the agent-server backend. The client MUST:
 - Never implement business logic
 - Always proxy requests to agent-server
 - Handle only UI state and presentation
@@ -99,7 +99,7 @@ All agent operations MUST be fully observable with comprehensive event timelines
 - MUST be documented with Storybook stories
 - MUST have unit tests
 
-**Application Components** (agent-client):
+**Application Components** (agent-manager):
 - MAY use shared components from busibox-ui
 - MUST handle application-specific logic
 - SHOULD be small and focused (single responsibility)
@@ -219,7 +219,7 @@ All agent operations MUST be fully observable with comprehensive event timelines
 
 ### Constitution Authority
 
-This constitution supersedes all other development practices for the agent-client project. Any deviation MUST be:
+This constitution supersedes all other development practices for the agent-manager project. Any deviation MUST be:
 1. Documented with clear rationale
 2. Approved by project lead
 3. Updated in this constitution if it becomes a pattern

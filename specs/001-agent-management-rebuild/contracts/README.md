@@ -4,7 +4,7 @@
 
 **File**: `agent-server-api.yaml`
 
-This OpenAPI 3.1 specification documents the agent-server API as currently implemented. The agent-client application consumes this API.
+This OpenAPI 3.1 specification documents the agent-server API as currently implemented. The agent-manager application consumes this API.
 
 ### Key Endpoints
 
@@ -71,7 +71,7 @@ The following endpoints may be added in future versions:
 
 ### Agent-Client Implications
 
-The agent-client UI must adapt to the current API limitations:
+The agent-manager UI must adapt to the current API limitations:
 - **Tools**: Can list and create, but cannot edit or delete individual tools
 - **Workflows**: Can list and create, but cannot edit or delete individual workflows  
 - **Evaluators**: Can list and create, but cannot edit or delete individual evaluators
