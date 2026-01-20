@@ -181,11 +181,11 @@ Required for agent-manager:
 
 ```bash
 # Agent API
-NEXT_PUBLIC_AGENT_API_URL=http://10.96.200.202:8000
+NEXT_PUBLIC_AGENT_API_URL=https://localhost:8000
 
 # SSO Authentication
 SSO_JWT_SECRET=<shared-secret-with-ai-portal>
-AI_PORTAL_URL=https://ai.jaycashman.com
+AI_PORTAL_URL=https://localhost
 
 # Base Path (if deployed with basePath)
 NEXT_PUBLIC_BASE_PATH=/agents

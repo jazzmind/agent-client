@@ -10,7 +10,7 @@ import * as jose from 'jose';
 // Environment variables
 const SSO_JWT_SECRET = process.env.SSO_JWT_SECRET || process.env.JWT_SECRET || '';
 const OAUTH_CLIENT_SECRET = process.env.OAUTH_CLIENT_SECRET || '';
-const AI_PORTAL_URL = process.env.AI_PORTAL_URL || 'https://ai.jaycashman.com';
+const AI_PORTAL_URL = process.env.AI_PORTAL_URL || 'https://localhost';
 const APP_ID = 'agent-manager-client'; // This should match the oauthClientId in ai-portal
 
 if (!SSO_JWT_SECRET) {
@@ -28,7 +28,7 @@ export type SSOTokenPayload = {
   jti: string;
   sub: string;  // userId
   aud: string;  // appId
-  iss: string;  // 'jay-cashman-portal'
+  iss: string;  // 'busibox-portal'
   iat: number;
   exp: number;
   email: string;
@@ -70,7 +70,7 @@ export async function validateSSOToken(token: string): Promise<SSOValidationResu
   try {
     // Verify and decode token
     const { payload } = await jose.jwtVerify(token, secret, {
-      issuer: 'jay-cashman-portal',
+      issuer: 'busibox-portal',
       audience: APP_ID,
     });
 

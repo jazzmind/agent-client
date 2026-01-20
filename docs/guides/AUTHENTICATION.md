@@ -120,7 +120,7 @@ PORT=3001
   "email": "user@example.com",
   "roles": ["Admin", "User"],
   "aud": "agent-manager",
-  "iss": "jay-cashman-portal",
+  "iss": "busibox-portal",
   "exp": 1234567890
 }
 ```
