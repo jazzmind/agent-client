@@ -7,17 +7,23 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import { useAuth } from '@/components/auth/AuthContext';
 
 interface Workflow {
   id: string;
   name: string;
   description?: string;
-  active: boolean;
+  is_active: boolean;
+  is_builtin?: boolean;
   trigger: {
     type: string;
     config: any;
+  };
+  guardrails?: {
+    request_limit?: number;
+    tool_calls_limit?: number;
+    max_cost_dollars?: number;
+    timeout_seconds?: number;
   };
   steps: any[];
   created_at: string;
@@ -62,12 +68,10 @@ const getExecutionStatusColor = (status: string) => {
 
 export default function WorkflowsListPage() {
   const { isReady, refreshKey } = useAuth();
-  const router = useRouter();
   const [workflows, setWorkflows] = useState<Workflow[]>([]);
   const [executions, setExecutions] = useState<Record<string, WorkflowExecution[]>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [executing, setExecuting] = useState<string | null>(null);
 
   // Wait for auth to be ready before fetching data
   useEffect(() => {
@@ -105,47 +109,6 @@ export default function WorkflowsListPage() {
       setError(err instanceof Error ? err.message : 'Failed to load workflows');
     } finally {
       setLoading(false);
-    }
-  };
-
-  const handleExecute = async (workflowId: string) => {
-    if (executing) return;
-    
-    setExecuting(workflowId);
-    try {
-      const response = await fetch(`/api/workflows/${workflowId}/execute`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ input_data: {} }),
-      });
-
-      if (!response.ok) throw new Error('Failed to execute workflow');
-
-      const execution = await response.json();
-      alert(`Workflow executed! Execution ID: ${execution.id}\nStatus: ${execution.status}`);
-      
-      // Reload workflows to show updated execution
-      await loadWorkflows();
-    } catch (err) {
-      alert(`Failed to execute workflow: ${err instanceof Error ? err.message : 'Unknown error'}`);
-    } finally {
-      setExecuting(null);
-    }
-  };
-
-  const handleDelete = async (workflowId: string, workflowName: string) => {
-    if (!confirm(`Delete workflow "${workflowName}"?`)) return;
-
-    try {
-      const response = await fetch(`/api/workflows/${workflowId}`, {
-        method: 'DELETE',
-      });
-
-      if (!response.ok) throw new Error('Failed to delete workflow');
-
-      await loadWorkflows();
-    } catch (err) {
-      alert(`Failed to delete workflow: ${err instanceof Error ? err.message : 'Unknown error'}`);
     }
   };
 
@@ -219,9 +182,10 @@ export default function WorkflowsListPage() {
           const lastExecution = executions[workflow.id]?.[0];
 
           return (
-            <div
+            <Link
               key={workflow.id}
-              className="border border-gray-200 dark:border-gray-700 rounded-lg p-6 bg-white dark:bg-gray-800 hover:shadow-lg transition-shadow"
+              href={`/workflows/${workflow.id}`}
+              className="block border border-gray-200 dark:border-gray-700 rounded-lg p-6 bg-white dark:bg-gray-800 hover:shadow-lg hover:border-blue-300 dark:hover:border-blue-600 transition-all cursor-pointer"
             >
               {/* Header */}
               <div className="mb-4">
@@ -235,8 +199,13 @@ export default function WorkflowsListPage() {
 
               {/* Metadata */}
               <div className="flex flex-wrap gap-2 mb-4">
-                <span className={`px-2 py-1 rounded text-xs font-medium ${getStatusColor(workflow.active)}`}>
-                  {workflow.active ? 'Active' : 'Inactive'}
+                {workflow.is_builtin && (
+                  <span className="px-2 py-1 rounded text-xs font-medium bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200">
+                    Built-in
+                  </span>
+                )}
+                <span className={`px-2 py-1 rounded text-xs font-medium ${getStatusColor(workflow.is_active)}`}>
+                  {workflow.is_active ? 'Active' : 'Inactive'}
                 </span>
                 {workflow.trigger && (
                   <span className="px-2 py-1 rounded text-xs font-medium bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300">
@@ -250,7 +219,7 @@ export default function WorkflowsListPage() {
 
               {/* Last Execution */}
               {lastExecution && (
-                <div className="mb-4 p-3 bg-gray-50 dark:bg-gray-700 rounded">
+                <div className="p-3 bg-gray-50 dark:bg-gray-700 rounded">
                   <p className="text-xs text-gray-600 dark:text-gray-400 mb-2">Last Execution:</p>
                   <div className="flex items-center justify-between mb-1">
                     <span className={`px-2 py-1 rounded text-xs font-medium ${getExecutionStatusColor(lastExecution.status)}`}>
@@ -265,38 +234,7 @@ export default function WorkflowsListPage() {
                   </div>
                 </div>
               )}
-
-              {/* Actions */}
-              <div className="flex gap-2">
-                <Link
-                  href={`/workflows/${workflow.id}`}
-                  className="flex-1 px-3 py-2 text-sm text-center bg-blue-600 hover:bg-blue-700 text-white rounded transition-colors"
-                >
-                  View
-                </Link>
-                {workflow.active && (
-                  <button
-                    onClick={() => handleExecute(workflow.id)}
-                    disabled={executing === workflow.id}
-                    className="flex-1 px-3 py-2 text-sm bg-green-600 hover:bg-green-700 text-white rounded transition-colors disabled:opacity-50"
-                  >
-                    {executing === workflow.id ? 'Running...' : 'Execute'}
-                  </button>
-                )}
-                <Link
-                  href={`/workflows/${workflow.id}/edit`}
-                  className="px-3 py-2 text-sm bg-gray-600 hover:bg-gray-700 text-white rounded transition-colors"
-                >
-                  Edit
-                </Link>
-                <button
-                  onClick={() => handleDelete(workflow.id, workflow.name)}
-                  className="px-3 py-2 text-sm bg-red-600 hover:bg-red-700 text-white rounded transition-colors"
-                >
-                  Delete
-                </button>
-              </div>
-            </div>
+            </Link>
           );
         })}
       </div>

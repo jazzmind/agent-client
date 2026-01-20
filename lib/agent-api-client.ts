@@ -708,6 +708,17 @@ export async function getWorkflowExecutionSteps(executionId: string, token?: str
 }
 
 /**
+ * Stop a running workflow execution
+ */
+export async function stopWorkflowExecution(executionId: string, token?: string): Promise<any> {
+  const response = await fetch(`${AGENT_API_URL}/agents/workflows/executions/${executionId}/stop`, {
+    method: 'POST',
+    headers: getAgentApiHeaders(token),
+  });
+  return handleResponse(response);
+}
+
+/**
  * Execute a workflow
  */
 export async function executeWorkflow(

@@ -65,16 +65,26 @@ export default function StepConfigPanel({
     }
   };
 
-  const renderAgentConfig = () => (
+  const renderAgentConfig = () => {
+    // Get current agent value (can be name or id)
+    const currentAgent = (localStep as any).agent || localStep.agent_id || '';
+    
+    // Find matching agent by id OR name (for built-in workflows that use names)
+    const matchedAgent = agents.find(a => 
+      a.id === currentAgent || a.name === currentAgent
+    );
+    
+    return (
     <div className="space-y-4">
       <div>
         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
           Agent *
         </label>
         <select
-          value={(localStep as any).agent || localStep.agent_id || ''}
+          value={matchedAgent?.name || currentAgent}
           onChange={(e) => {
             // Set both 'agent' (for backend) and 'agent_id' (for backwards compat)
+            // Use agent name for built-in workflows compatibility
             handleChange('agent', e.target.value);
             handleChange('agent_id', e.target.value);
           }}
@@ -82,11 +92,16 @@ export default function StepConfigPanel({
         >
           <option value="">Select an agent...</option>
           {agents.map((agent) => (
-            <option key={agent.id} value={agent.id}>
+            <option key={agent.id} value={agent.name}>
               {agent.display_name || agent.name}
             </option>
           ))}
         </select>
+        {currentAgent && !matchedAgent && agents.length > 0 && (
+          <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">
+            Current agent "{currentAgent}" not found in available agents
+          </p>
+        )}
         <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
           * Required field
         </p>
@@ -108,6 +123,7 @@ export default function StepConfigPanel({
       </div>
     </div>
   );
+  };
 
   const renderToolConfig = () => (
     <div className="space-y-4">

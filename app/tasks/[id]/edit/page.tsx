@@ -17,11 +17,21 @@ interface Agent {
   description?: string;
 }
 
+interface Workflow {
+  id: string;
+  name: string;
+  description?: string;
+  is_builtin?: boolean;
+}
+
+type TargetType = 'agent' | 'workflow';
+
 interface Task {
   id: string;
   name: string;
   description?: string;
-  agent_id: string;
+  agent_id?: string;
+  workflow_id?: string;
   prompt: string;
   trigger_type: string;
   trigger_config: {
@@ -70,6 +80,7 @@ export default function EditTaskPage() {
   const { isReady } = useAuth();
   
   const [agents, setAgents] = useState<Agent[]>([]);
+  const [workflows, setWorkflows] = useState<Workflow[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -77,7 +88,9 @@ export default function EditTaskPage() {
   // Form state
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
+  const [targetType, setTargetType] = useState<TargetType>('agent');
   const [agentId, setAgentId] = useState('');
+  const [workflowId, setWorkflowId] = useState('');
   const [prompt, setPrompt] = useState('');
   const [schedulePreset, setSchedulePreset] = useState('custom');
   const [customCron, setCustomCron] = useState('0 9 * * *');
@@ -94,10 +107,11 @@ export default function EditTaskPage() {
 
   const loadData = async () => {
     try {
-      // Load task and agents in parallel
-      const [taskResponse, agentsResponse] = await Promise.all([
+      // Load task, agents, and workflows in parallel
+      const [taskResponse, agentsResponse, workflowsResponse] = await Promise.all([
         fetch(`/api/tasks/${taskId}`),
         fetch('/api/agents'),
+        fetch('/api/workflows'),
       ]);
 
       if (!taskResponse.ok) throw new Error('Failed to load task');
@@ -108,10 +122,26 @@ export default function EditTaskPage() {
 
       setAgents(agentsList);
       
+      if (workflowsResponse.ok) {
+        const workflowsList: Workflow[] = await workflowsResponse.json();
+        setWorkflows(workflowsList);
+      }
+      
       // Populate form with task data
       setName(task.name);
       setDescription(task.description || '');
-      setAgentId(task.agent_id);
+      
+      // Determine target type from task
+      if (task.workflow_id) {
+        setTargetType('workflow');
+        setWorkflowId(task.workflow_id);
+        setAgentId('');
+      } else {
+        setTargetType('agent');
+        setAgentId(task.agent_id || '');
+        setWorkflowId('');
+      }
+      
       setPrompt(task.prompt);
       
       // Handle cron schedule
@@ -147,7 +177,8 @@ export default function EditTaskPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!name.trim() || !prompt.trim()) {
+    const hasTarget = targetType === 'agent' ? agentId : workflowId;
+    if (!name.trim() || !prompt.trim() || !hasTarget) {
       setError('Please fill in all required fields');
       return;
     }
@@ -176,6 +207,12 @@ export default function EditTaskPage() {
           include_summary: true,
           include_portal_link: true,
         } : { enabled: false },
+        // Include agent_id or workflow_id based on target type
+        // When switching, we need to clear the other field
+        ...(targetType === 'agent' 
+          ? { agent_id: agentId, workflow_id: null } 
+          : { workflow_id: workflowId, agent_id: null }
+        ),
         insights_config: {
           enabled: insightsEnabled,
           max_insights: maxInsights,
@@ -212,8 +249,6 @@ export default function EditTaskPage() {
       </div>
     );
   }
-
-  const currentAgent = agents.find(a => a.id === agentId);
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-8">
@@ -272,13 +307,75 @@ export default function EditTaskPage() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Agent
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Execute *
               </label>
-              <div className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700 text-gray-700 dark:text-gray-300">
-                {currentAgent?.display_name || currentAgent?.name || agentId}
-                <span className="text-sm text-gray-500 dark:text-gray-400 ml-2">(cannot be changed)</span>
+              <div className="grid grid-cols-2 gap-3 mb-3">
+                <button
+                  type="button"
+                  onClick={() => setTargetType('agent')}
+                  className={`p-3 border rounded-lg text-left transition-colors ${
+                    targetType === 'agent'
+                      ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
+                      : 'border-gray-200 dark:border-gray-600 hover:border-gray-300'
+                  }`}
+                >
+                  <div className="flex items-center gap-2">
+                    <span className="text-xl">🤖</span>
+                    <div>
+                      <div className="font-medium text-gray-900 dark:text-gray-100">Agent</div>
+                      <div className="text-xs text-gray-500 dark:text-gray-400">Run a single agent</div>
+                    </div>
+                  </div>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setTargetType('workflow')}
+                  className={`p-3 border rounded-lg text-left transition-colors ${
+                    targetType === 'workflow'
+                      ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
+                      : 'border-gray-200 dark:border-gray-600 hover:border-gray-300'
+                  }`}
+                >
+                  <div className="flex items-center gap-2">
+                    <span className="text-xl">📋</span>
+                    <div>
+                      <div className="font-medium text-gray-900 dark:text-gray-100">Workflow</div>
+                      <div className="text-xs text-gray-500 dark:text-gray-400">Run a multi-step workflow</div>
+                    </div>
+                  </div>
+                </button>
               </div>
+              
+              {targetType === 'agent' ? (
+                <select
+                  value={agentId}
+                  onChange={(e) => setAgentId(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                  required
+                >
+                  <option value="">Select an agent...</option>
+                  {agents.map((agent) => (
+                    <option key={agent.id} value={agent.id}>
+                      {agent.display_name || agent.name}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <select
+                  value={workflowId}
+                  onChange={(e) => setWorkflowId(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                  required
+                >
+                  <option value="">Select a workflow...</option>
+                  {workflows.map((workflow) => (
+                    <option key={workflow.id} value={workflow.id}>
+                      {workflow.name} {workflow.is_builtin ? '(Built-in)' : ''}
+                    </option>
+                  ))}
+                </select>
+              )}
             </div>
 
             <div>

@@ -17,15 +17,17 @@ export async function GET(
 
     const { id } = await params;
     const headers = getAuthHeaders(auth.agentApiToken);
+    const { searchParams } = new URL(request.url);
     
-    const response = await fetch(`${AGENT_API_URL}/runs/${id}`, {
-      headers,
-    });
+    const response = await fetch(
+      `${AGENT_API_URL}/tasks/${id}/notifications?${searchParams.toString()}`,
+      { headers }
+    );
     
     if (!response.ok) {
       const error = await response.text();
       return NextResponse.json(
-        { error: 'Failed to fetch run', detail: error },
+        { error: 'Failed to fetch notifications', detail: error },
         { status: response.status }
       );
     }
@@ -33,7 +35,7 @@ export async function GET(
     const data = await response.json();
     return NextResponse.json(data);
   } catch (error) {
-    console.error('Error fetching run:', error);
+    console.error('Error fetching task notifications:', error);
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Internal error' },
       { status: 500 }

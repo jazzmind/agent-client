@@ -17,6 +17,15 @@ interface Agent {
   description?: string;
 }
 
+interface Workflow {
+  id: string;
+  name: string;
+  description?: string;
+  is_builtin?: boolean;
+}
+
+type TargetType = 'agent' | 'workflow';
+
 const SCHEDULE_PRESETS = [
   { value: '*/5 * * * *', label: 'Every 5 minutes' },
   { value: '*/15 * * * *', label: 'Every 15 minutes' },
@@ -50,6 +59,7 @@ export default function CreateTaskPage() {
   const { isReady } = useAuth();
   
   const [agents, setAgents] = useState<Agent[]>([]);
+  const [workflows, setWorkflows] = useState<Workflow[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -57,7 +67,9 @@ export default function CreateTaskPage() {
   // Form state
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
+  const [targetType, setTargetType] = useState<TargetType>('agent');
   const [agentId, setAgentId] = useState('');
+  const [workflowId, setWorkflowId] = useState('');
   const [prompt, setPrompt] = useState('');
   const [triggerType, setTriggerType] = useState('cron');
   const [schedulePreset, setSchedulePreset] = useState('0 9 * * *');
@@ -71,20 +83,33 @@ export default function CreateTaskPage() {
 
   useEffect(() => {
     if (!isReady) return;
-    loadAgents();
+    loadData();
   }, [isReady]);
 
-  const loadAgents = async () => {
+  const loadData = async () => {
     try {
-      const response = await fetch('/api/agents');
-      if (!response.ok) throw new Error('Failed to load agents');
-      const data = await response.json();
-      setAgents(data);
-      if (data.length > 0) {
-        setAgentId(data[0].id);
+      // Load agents and workflows in parallel
+      const [agentsResponse, workflowsResponse] = await Promise.all([
+        fetch('/api/agents'),
+        fetch('/api/workflows'),
+      ]);
+      
+      if (!agentsResponse.ok) throw new Error('Failed to load agents');
+      const agentsData = await agentsResponse.json();
+      setAgents(agentsData);
+      if (agentsData.length > 0) {
+        setAgentId(agentsData[0].id);
+      }
+      
+      if (workflowsResponse.ok) {
+        const workflowsData = await workflowsResponse.json();
+        setWorkflows(workflowsData);
+        if (workflowsData.length > 0) {
+          setWorkflowId(workflowsData[0].id);
+        }
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load agents');
+      setError(err instanceof Error ? err.message : 'Failed to load data');
     } finally {
       setLoading(false);
     }
@@ -93,7 +118,8 @@ export default function CreateTaskPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!name.trim() || !agentId || !prompt.trim()) {
+    const hasTarget = targetType === 'agent' ? agentId : workflowId;
+    if (!name.trim() || !hasTarget || !prompt.trim()) {
       setError('Please fill in all required fields');
       return;
     }
@@ -136,20 +162,28 @@ export default function CreateTaskPage() {
         context_limit: 10,
       };
 
+      // Build payload based on target type
+      const payload: any = {
+        name,
+        description: description || undefined,
+        prompt,
+        trigger_type: triggerType,
+        trigger_config: triggerConfig,
+        notification_config: notificationConfig,
+        insights_config: insightsConfig,
+        scopes: ['search.read', 'web_search.read'],
+      };
+      
+      if (targetType === 'agent') {
+        payload.agent_id = agentId;
+      } else {
+        payload.workflow_id = workflowId;
+      }
+
       const response = await fetch('/api/tasks', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name,
-          description: description || undefined,
-          agent_id: agentId,
-          prompt,
-          trigger_type: triggerType,
-          trigger_config: triggerConfig,
-          notification_config: notificationConfig,
-          insights_config: insightsConfig,
-          scopes: ['search.read', 'web_search.read'],
-        }),
+        body: JSON.stringify(payload),
       });
 
       if (!response.ok) {
@@ -232,21 +266,75 @@ export default function CreateTaskPage() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Agent *
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Execute *
               </label>
-              <select
-                value={agentId}
-                onChange={(e) => setAgentId(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
-                required
-              >
-                {agents.map((agent) => (
-                  <option key={agent.id} value={agent.id}>
-                    {agent.display_name || agent.name}
-                  </option>
-                ))}
-              </select>
+              <div className="grid grid-cols-2 gap-3 mb-3">
+                <button
+                  type="button"
+                  onClick={() => setTargetType('agent')}
+                  className={`p-3 border rounded-lg text-left transition-colors ${
+                    targetType === 'agent'
+                      ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
+                      : 'border-gray-200 dark:border-gray-600 hover:border-gray-300'
+                  }`}
+                >
+                  <div className="flex items-center gap-2">
+                    <span className="text-xl">🤖</span>
+                    <div>
+                      <div className="font-medium text-gray-900 dark:text-gray-100">Agent</div>
+                      <div className="text-xs text-gray-500 dark:text-gray-400">Run a single agent</div>
+                    </div>
+                  </div>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setTargetType('workflow')}
+                  className={`p-3 border rounded-lg text-left transition-colors ${
+                    targetType === 'workflow'
+                      ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
+                      : 'border-gray-200 dark:border-gray-600 hover:border-gray-300'
+                  }`}
+                >
+                  <div className="flex items-center gap-2">
+                    <span className="text-xl">📋</span>
+                    <div>
+                      <div className="font-medium text-gray-900 dark:text-gray-100">Workflow</div>
+                      <div className="text-xs text-gray-500 dark:text-gray-400">Run a multi-step workflow</div>
+                    </div>
+                  </div>
+                </button>
+              </div>
+              
+              {targetType === 'agent' ? (
+                <select
+                  value={agentId}
+                  onChange={(e) => setAgentId(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                  required
+                >
+                  <option value="">Select an agent...</option>
+                  {agents.map((agent) => (
+                    <option key={agent.id} value={agent.id}>
+                      {agent.display_name || agent.name}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <select
+                  value={workflowId}
+                  onChange={(e) => setWorkflowId(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                  required
+                >
+                  <option value="">Select a workflow...</option>
+                  {workflows.map((workflow) => (
+                    <option key={workflow.id} value={workflow.id}>
+                      {workflow.name} {workflow.is_builtin ? '(Built-in)' : ''}
+                    </option>
+                  ))}
+                </select>
+              )}
             </div>
 
             <div>

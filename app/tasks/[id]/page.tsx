@@ -17,11 +17,19 @@ interface Agent {
   description?: string;
 }
 
+interface Workflow {
+  id: string;
+  name: string;
+  description?: string;
+  is_builtin?: boolean;
+}
+
 interface Task {
   id: string;
   name: string;
   description?: string;
-  agent_id: string;
+  agent_id?: string;
+  workflow_id?: string;
   prompt: string;
   trigger_type: string;
   trigger_config: {
@@ -59,12 +67,48 @@ interface TaskExecution {
   run_id?: string;
   trigger_source: string;
   status: string;
+  input_data?: Record<string, any>;
+  output_data?: Record<string, any>;
   output_summary?: string;
   notification_sent: boolean;
+  notification_error?: string;
   started_at?: string;
   completed_at?: string;
   duration_seconds?: number;
   error?: string;
+  created_at: string;
+}
+
+interface RunRecord {
+  id: string;
+  agent_id: string;
+  status: string;
+  input: Record<string, any>;
+  output?: Record<string, any>;
+  events: Array<{
+    timestamp: string;
+    type: string;
+    data?: Record<string, any>;
+    error?: string;
+  }>;
+  created_by?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+interface TaskNotification {
+  id: string;
+  execution_id: string;
+  channel: string;
+  recipient: string;
+  subject: string;
+  status: string;
+  message_id?: string;
+  sent_at?: string;
+  delivered_at?: string;
+  read_at?: string;
+  error?: string;
+  retry_count: number;
   created_at: string;
 }
 
@@ -73,9 +117,11 @@ const getStatusColor = (status: string) => {
     case 'active': return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200';
     case 'paused': return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200';
     case 'completed': return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200';
+    case 'succeeded': return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200';
     case 'failed': return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200';
     case 'running': return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200';
     case 'pending': return 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300';
+    case 'timeout': return 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200';
     default: return 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300';
   }
 };
@@ -89,6 +135,25 @@ const getTriggerIcon = (type: string) => {
   }
 };
 
+const getEventIcon = (type: string) => {
+  switch (type) {
+    case 'created': return '🆕';
+    case 'token_exchange_started': return '🔑';
+    case 'token_exchange_completed': return '✅';
+    case 'token_provided': return '🎫';
+    case 'token_exchange_skipped': return '⏭️';
+    case 'agent_loaded': return '🤖';
+    case 'execution_started': return '▶️';
+    case 'execution_completed': return '✅';
+    case 'execution_failed': return '❌';
+    case 'tool_call': return '🔧';
+    case 'timeout': return '⏱️';
+    case 'error': return '❌';
+    case 'setup_failed': return '⚠️';
+    default: return '📍';
+  }
+};
+
 export default function TaskDetailPage() {
   const params = useParams();
   const router = useRouter();
@@ -97,17 +162,24 @@ export default function TaskDetailPage() {
   
   const [task, setTask] = useState<Task | null>(null);
   const [agents, setAgents] = useState<Agent[]>([]);
+  const [workflows, setWorkflows] = useState<Workflow[]>([]);
   const [executions, setExecutions] = useState<TaskExecution[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
-  const [showWebhookSecret, setShowWebhookSecret] = useState(false);
+  const [expandedExecution, setExpandedExecution] = useState<string | null>(null);
+  const [runDetails, setRunDetails] = useState<Record<string, RunRecord>>({});
+  const [loadingRun, setLoadingRun] = useState<string | null>(null);
+  const [notifications, setNotifications] = useState<TaskNotification[]>([]);
+  const [activeTab, setActiveTab] = useState<'executions' | 'notifications'>('executions');
 
   useEffect(() => {
     if (!isReady) return;
     loadTask();
     loadExecutions();
     loadAgents();
+    loadWorkflows();
+    loadNotifications();
   }, [isReady, taskId]);
 
   const loadTask = async () => {
@@ -125,7 +197,7 @@ export default function TaskDetailPage() {
 
   const loadExecutions = async () => {
     try {
-      const response = await fetch(`/api/tasks/${taskId}/executions?limit=10`);
+      const response = await fetch(`/api/tasks/${taskId}/executions?limit=20`);
       if (!response.ok) return;
       const data = await response.json();
       setExecutions(data);
@@ -145,9 +217,75 @@ export default function TaskDetailPage() {
     }
   };
 
-  const getAgentName = (agentId: string): string => {
+  const loadWorkflows = async () => {
+    try {
+      const response = await fetch('/api/workflows');
+      if (!response.ok) return;
+      const data = await response.json();
+      setWorkflows(data);
+    } catch (err) {
+      console.error('Failed to load workflows:', err);
+    }
+  };
+
+  const loadNotifications = async () => {
+    try {
+      const response = await fetch(`/api/tasks/${taskId}/notifications?limit=50`);
+      if (!response.ok) return;
+      const data = await response.json();
+      setNotifications(data.notifications || []);
+    } catch (err) {
+      console.error('Failed to load notifications:', err);
+    }
+  };
+
+  const loadRunDetails = async (runId: string) => {
+    if (runDetails[runId]) return; // Already loaded
+    
+    setLoadingRun(runId);
+    try {
+      const response = await fetch(`/api/runs/${runId}`);
+      if (!response.ok) {
+        console.error('Failed to load run details');
+        return;
+      }
+      const data = await response.json();
+      setRunDetails(prev => ({ ...prev, [runId]: data }));
+    } catch (err) {
+      console.error('Failed to load run details:', err);
+    } finally {
+      setLoadingRun(null);
+    }
+  };
+
+  const toggleExecution = async (execId: string, runId?: string) => {
+    if (expandedExecution === execId) {
+      setExpandedExecution(null);
+    } else {
+      setExpandedExecution(execId);
+      if (runId) {
+        await loadRunDetails(runId);
+      }
+    }
+  };
+
+  const getAgentName = (agentId?: string): string => {
+    if (!agentId) return 'Unknown';
     const agent = agents.find(a => a.id === agentId);
     return agent?.display_name || agent?.name || agentId;
+  };
+
+  const getWorkflowName = (workflowId?: string): string => {
+    if (!workflowId) return 'Unknown';
+    const workflow = workflows.find(w => w.id === workflowId);
+    return workflow?.name || workflowId;
+  };
+
+  const getTargetName = (): { type: 'agent' | 'workflow'; name: string } => {
+    if (task?.workflow_id) {
+      return { type: 'workflow', name: getWorkflowName(task.workflow_id) };
+    }
+    return { type: 'agent', name: getAgentName(task?.agent_id) };
   };
 
   const handlePause = async () => {
@@ -186,7 +324,7 @@ export default function TaskDetailPage() {
       });
       if (!response.ok) throw new Error('Failed to run task');
       const result = await response.json();
-      alert(`Task execution started! Execution ID: ${result.execution_id}`);
+      alert(`Task execution ${result.status}! Execution ID: ${result.execution_id}`);
       await loadTask();
       await loadExecutions();
     } catch (err) {
@@ -239,7 +377,7 @@ export default function TaskDetailPage() {
   }
 
   return (
-    <div className="max-w-4xl mx-auto px-4 py-8">
+    <div className="max-w-5xl mx-auto px-4 py-8">
       {/* Header */}
       <div className="flex items-start justify-between mb-8">
         <div>
@@ -299,7 +437,7 @@ export default function TaskDetailPage() {
         </div>
       </div>
 
-      {/* Status Badge and Agent */}
+      {/* Status Badge and Agent/Workflow */}
       <div className="flex flex-wrap gap-2 mb-6">
         <span className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(task.status)}`}>
           {task.status}
@@ -307,9 +445,18 @@ export default function TaskDetailPage() {
         <span className="px-3 py-1 rounded-full text-sm font-medium bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300">
           {getTriggerIcon(task.trigger_type)} {task.trigger_type}
         </span>
-        <span className="px-3 py-1 rounded-full text-sm font-medium bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200">
-          🤖 {getAgentName(task.agent_id)}
-        </span>
+        {(() => {
+          const target = getTargetName();
+          return (
+            <span className={`px-3 py-1 rounded-full text-sm font-medium ${
+              target.type === 'workflow' 
+                ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200'
+                : 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200'
+            }`}>
+              {target.type === 'workflow' ? '📋' : '🤖'} {target.name}
+            </span>
+          );
+        })()}
       </div>
 
       {/* Task Details */}
@@ -321,7 +468,7 @@ export default function TaskDetailPage() {
           <div className="space-y-4">
             <div>
               <label className="text-sm text-gray-600 dark:text-gray-400">Prompt</label>
-              <p className="text-gray-900 dark:text-gray-100 mt-1 bg-gray-50 dark:bg-gray-700 p-3 rounded">
+              <p className="text-gray-900 dark:text-gray-100 mt-1 bg-gray-50 dark:bg-gray-700 p-3 rounded text-sm">
                 {task.prompt}
               </p>
             </div>
@@ -363,36 +510,6 @@ export default function TaskDetailPage() {
           </div>
         </div>
 
-        {/* Notifications */}
-        <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-6">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Notifications</h2>
-          
-          {task.notification_config?.enabled ? (
-            <div className="space-y-4">
-              <div>
-                <label className="text-sm text-gray-600 dark:text-gray-400">Channel</label>
-                <p className="text-gray-900 dark:text-gray-100 mt-1 capitalize">
-                  {task.notification_config.channel}
-                </p>
-              </div>
-              <div>
-                <label className="text-sm text-gray-600 dark:text-gray-400">Recipient</label>
-                <p className="text-gray-900 dark:text-gray-100 mt-1">
-                  {task.notification_config.recipient}
-                </p>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className={`w-2 h-2 rounded-full ${task.notification_config.include_summary ? 'bg-green-500' : 'bg-gray-400'}`}></span>
-                <span className="text-sm text-gray-600 dark:text-gray-400">
-                  {task.notification_config.include_summary ? 'Includes summary' : 'No summary'}
-                </span>
-              </div>
-            </div>
-          ) : (
-            <p className="text-gray-500 dark:text-gray-400">Notifications disabled</p>
-          )}
-        </div>
-
         {/* Statistics */}
         <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-6">
           <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Statistics</h2>
@@ -421,96 +538,303 @@ export default function TaskDetailPage() {
           {task.last_error && (
             <div className="mt-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded">
               <label className="text-sm text-red-600 dark:text-red-400">Last Error</label>
-              <p className="text-red-800 dark:text-red-200 text-sm mt-1">{task.last_error}</p>
+              <p className="text-red-800 dark:text-red-200 text-sm mt-1 whitespace-pre-wrap">{task.last_error}</p>
             </div>
-          )}
-        </div>
-
-        {/* Insights Config */}
-        <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-6">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Task Memory</h2>
-          
-          {task.insights_config?.enabled ? (
-            <div className="space-y-4">
-              <div className="flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-green-500"></span>
-                <span className="text-sm text-gray-600 dark:text-gray-400">Memory enabled</span>
-              </div>
-              <div>
-                <label className="text-sm text-gray-600 dark:text-gray-400">Max Insights</label>
-                <p className="text-gray-900 dark:text-gray-100">{task.insights_config.max_insights}</p>
-              </div>
-              {task.insights_config.purge_after_days && (
-                <div>
-                  <label className="text-sm text-gray-600 dark:text-gray-400">Auto-purge</label>
-                  <p className="text-gray-900 dark:text-gray-100">
-                    After {task.insights_config.purge_after_days} days
-                  </p>
-                </div>
-              )}
-              <Link
-                href={`/tasks/${task.id}/insights`}
-                className="inline-block text-blue-600 hover:text-blue-700 dark:text-blue-400 text-sm"
-              >
-                View Task Insights →
-              </Link>
-            </div>
-          ) : (
-            <p className="text-gray-500 dark:text-gray-400">Task memory disabled</p>
           )}
         </div>
       </div>
 
-      {/* Recent Executions */}
-      <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-6">
-        <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Recent Executions</h2>
-        
-        {executions.length === 0 ? (
-          <p className="text-gray-500 dark:text-gray-400">No executions yet</p>
+      {/* Tabs for Executions and Notifications */}
+      <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
+        {/* Tab Headers */}
+        <div className="flex border-b border-gray-200 dark:border-gray-700">
+          <button
+            onClick={() => setActiveTab('executions')}
+            className={`px-6 py-3 text-sm font-medium transition-colors ${
+              activeTab === 'executions'
+                ? 'text-blue-600 dark:text-blue-400 border-b-2 border-blue-600 dark:border-blue-400 bg-blue-50 dark:bg-blue-900/20'
+                : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100'
+            }`}
+          >
+            Execution History ({executions.length})
+          </button>
+          <button
+            onClick={() => setActiveTab('notifications')}
+            className={`px-6 py-3 text-sm font-medium transition-colors ${
+              activeTab === 'notifications'
+                ? 'text-blue-600 dark:text-blue-400 border-b-2 border-blue-600 dark:border-blue-400 bg-blue-50 dark:bg-blue-900/20'
+                : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100'
+            }`}
+          >
+            Notifications ({notifications.length})
+          </button>
+        </div>
+
+        <div className="p-6">
+        {/* Execution History Tab */}
+        {activeTab === 'executions' && (
+          <div>
+            {executions.length === 0 ? (
+          <p className="text-gray-500 dark:text-gray-400">No executions yet. Click "Run Now" to trigger the first execution.</p>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-gray-200 dark:border-gray-700">
-                  <th className="text-left py-2 text-gray-600 dark:text-gray-400">Time</th>
-                  <th className="text-left py-2 text-gray-600 dark:text-gray-400">Trigger</th>
-                  <th className="text-left py-2 text-gray-600 dark:text-gray-400">Status</th>
-                  <th className="text-left py-2 text-gray-600 dark:text-gray-400">Duration</th>
-                  <th className="text-left py-2 text-gray-600 dark:text-gray-400">Notified</th>
-                </tr>
-              </thead>
-              <tbody>
-                {executions.map((exec) => (
-                  <tr key={exec.id} className="border-b border-gray-100 dark:border-gray-700">
-                    <td className="py-3 text-gray-900 dark:text-gray-100">
+          <div className="space-y-2">
+            {executions.map((exec) => (
+              <div key={exec.id} className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
+                {/* Execution Summary Row */}
+                <button
+                  onClick={() => toggleExecution(exec.id, exec.run_id)}
+                  className="w-full flex items-center justify-between p-4 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-left"
+                >
+                  <div className="flex items-center gap-4">
+                    <span className="text-gray-900 dark:text-gray-100 text-sm">
                       {new Date(exec.created_at).toLocaleString()}
-                    </td>
-                    <td className="py-3">
-                      <span className="text-gray-600 dark:text-gray-400">
-                        {getTriggerIcon(exec.trigger_source)} {exec.trigger_source}
+                    </span>
+                    <span className="text-gray-600 dark:text-gray-400 text-sm">
+                      {getTriggerIcon(exec.trigger_source)} {exec.trigger_source}
+                    </span>
+                    <span className={`px-2 py-1 rounded text-xs font-medium ${getStatusColor(exec.status)}`}>
+                      {exec.status}
+                    </span>
+                    {exec.duration_seconds && (
+                      <span className="text-gray-500 dark:text-gray-400 text-sm">
+                        {exec.duration_seconds.toFixed(1)}s
                       </span>
-                    </td>
-                    <td className="py-3">
-                      <span className={`px-2 py-1 rounded text-xs font-medium ${getStatusColor(exec.status)}`}>
-                        {exec.status}
+                    )}
+                  </div>
+                  <span className="text-gray-400">
+                    {expandedExecution === exec.id ? '▲' : '▼'}
+                  </span>
+                </button>
+
+                {/* Expanded Details */}
+                {expandedExecution === exec.id && (
+                  <div className="border-t border-gray-200 dark:border-gray-700 p-4 bg-gray-50 dark:bg-gray-900">
+                    {/* Execution Error */}
+                    {exec.error && (
+                      <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 rounded">
+                        <h4 className="text-sm font-semibold text-red-800 dark:text-red-200 mb-1">Error</h4>
+                        <pre className="text-red-700 dark:text-red-300 text-sm whitespace-pre-wrap overflow-x-auto">
+                          {exec.error}
+                        </pre>
+                      </div>
+                    )}
+
+                    {/* Input Data */}
+                    {exec.input_data && Object.keys(exec.input_data).length > 0 && (
+                      <div className="mb-4">
+                        <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Input</h4>
+                        <pre className="bg-gray-100 dark:bg-gray-800 p-3 rounded text-xs overflow-x-auto">
+                          {JSON.stringify(exec.input_data, null, 2)}
+                        </pre>
+                      </div>
+                    )}
+
+                    {/* Output Summary */}
+                    {exec.output_summary && (
+                      <div className="mb-4">
+                        <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Output Summary</h4>
+                        <p className="text-gray-600 dark:text-gray-400 text-sm bg-gray-100 dark:bg-gray-800 p-3 rounded">
+                          {exec.output_summary}
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Run Details (if run_id exists) */}
+                    {exec.run_id && (
+                      <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+                        <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                          Agent Run Details
+                          {loadingRun === exec.run_id && (
+                            <span className="ml-2 text-gray-400 font-normal">Loading...</span>
+                          )}
+                        </h4>
+                        
+                        {runDetails[exec.run_id] ? (
+                          <div className="space-y-4">
+                            {/* Run Status */}
+                            <div className="flex items-center gap-2">
+                              <span className="text-sm text-gray-500 dark:text-gray-400">Run Status:</span>
+                              <span className={`px-2 py-1 rounded text-xs font-medium ${getStatusColor(runDetails[exec.run_id].status)}`}>
+                                {runDetails[exec.run_id].status}
+                              </span>
+                            </div>
+
+                            {/* Run Input */}
+                            <div>
+                              <h5 className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-1">Run Input</h5>
+                              <pre className="bg-gray-100 dark:bg-gray-800 p-3 rounded text-xs overflow-x-auto max-h-48 overflow-y-auto">
+                                {JSON.stringify(runDetails[exec.run_id].input, null, 2)}
+                              </pre>
+                            </div>
+
+                            {/* Run Output */}
+                            {runDetails[exec.run_id].output && (
+                              <div>
+                                <h5 className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-1">Run Output</h5>
+                                <pre className="bg-gray-100 dark:bg-gray-800 p-3 rounded text-xs overflow-x-auto max-h-64 overflow-y-auto">
+                                  {JSON.stringify(runDetails[exec.run_id].output, null, 2)}
+                                </pre>
+                              </div>
+                            )}
+
+                            {/* Run Events Timeline */}
+                            {runDetails[exec.run_id].events && runDetails[exec.run_id].events.length > 0 && (
+                              <div>
+                                <h5 className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-2">Event Timeline</h5>
+                                <div className="space-y-2 max-h-64 overflow-y-auto">
+                                  {runDetails[exec.run_id].events.map((event, idx) => (
+                                    <div 
+                                      key={idx}
+                                      className={`p-2 rounded text-sm ${
+                                        event.type.includes('error') || event.type.includes('failed')
+                                          ? 'bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800'
+                                          : event.type.includes('completed') || event.type.includes('succeeded')
+                                          ? 'bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800'
+                                          : 'bg-gray-100 dark:bg-gray-800'
+                                      }`}
+                                    >
+                                      <div className="flex items-center gap-2">
+                                        <span>{getEventIcon(event.type)}</span>
+                                        <span className="font-medium text-gray-800 dark:text-gray-200">
+                                          {event.type.replace(/_/g, ' ')}
+                                        </span>
+                                        <span className="text-gray-500 dark:text-gray-400 text-xs">
+                                          {new Date(event.timestamp).toLocaleTimeString()}
+                                        </span>
+                                      </div>
+                                      {event.error && (
+                                        <pre className="mt-1 text-red-600 dark:text-red-400 text-xs whitespace-pre-wrap">
+                                          {event.error}
+                                        </pre>
+                                      )}
+                                      {event.data && Object.keys(event.data).length > 0 && (
+                                        <pre className="mt-1 text-gray-600 dark:text-gray-400 text-xs whitespace-pre-wrap">
+                                          {JSON.stringify(event.data, null, 2)}
+                                        </pre>
+                                      )}
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        ) : loadingRun !== exec.run_id ? (
+                          <p className="text-gray-500 dark:text-gray-400 text-sm">
+                            Run details not available
+                          </p>
+                        ) : null}
+                      </div>
+                    )}
+
+                    {/* Notification Status */}
+                    <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700 flex items-center gap-4">
+                      <span className="text-sm text-gray-500 dark:text-gray-400">
+                        Notification: {exec.notification_sent ? (
+                          <span className="text-green-600 dark:text-green-400">Sent ✓</span>
+                        ) : exec.notification_error ? (
+                          <span className="text-red-600 dark:text-red-400">Failed - {exec.notification_error}</span>
+                        ) : (
+                          <span className="text-gray-400">Not sent</span>
+                        )}
                       </span>
-                    </td>
-                    <td className="py-3 text-gray-600 dark:text-gray-400">
-                      {exec.duration_seconds ? `${exec.duration_seconds.toFixed(1)}s` : '-'}
-                    </td>
-                    <td className="py-3">
-                      {exec.notification_sent ? (
-                        <span className="text-green-600 dark:text-green-400">✓</span>
-                      ) : (
-                        <span className="text-gray-400">-</span>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                    </div>
+                  </div>
+                )}
+              </div>
+            ))}
+            </div>
+          )}
           </div>
         )}
+
+        {/* Notifications Tab */}
+        {activeTab === 'notifications' && (
+          <div>
+            {notifications.length === 0 ? (
+              <p className="text-gray-500 dark:text-gray-400">
+                No notifications have been sent yet.
+                {task.notification_config?.enabled ? ' Notifications will be sent after each execution.' : ' Enable notifications in task settings.'}
+              </p>
+            ) : (
+              <div className="space-y-3">
+                {notifications.map((notif) => (
+                  <div
+                    key={notif.id}
+                    className="border border-gray-200 dark:border-gray-700 rounded-lg p-4"
+                  >
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className={`px-2 py-0.5 rounded text-xs font-medium ${
+                            notif.status === 'sent' || notif.status === 'delivered' 
+                              ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+                              : notif.status === 'failed'
+                              ? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
+                              : notif.status === 'read'
+                              ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200'
+                              : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300'
+                          }`}>
+                            {notif.status}
+                          </span>
+                          <span className="text-sm text-gray-500 dark:text-gray-400">
+                            via {notif.channel}
+                          </span>
+                          <span className="text-sm text-gray-500 dark:text-gray-400">
+                            →
+                          </span>
+                          <span className="text-sm text-gray-700 dark:text-gray-300">
+                            {notif.recipient}
+                          </span>
+                        </div>
+                        <p className="text-gray-900 dark:text-gray-100 font-medium">
+                          {notif.subject}
+                        </p>
+                        <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                          {notif.created_at && new Date(notif.created_at).toLocaleString()}
+                        </p>
+                      </div>
+                      <div className="text-right text-sm">
+                        {notif.sent_at && (
+                          <p className="text-green-600 dark:text-green-400">
+                            Sent: {new Date(notif.sent_at).toLocaleString()}
+                          </p>
+                        )}
+                        {notif.delivered_at && (
+                          <p className="text-blue-600 dark:text-blue-400">
+                            Delivered: {new Date(notif.delivered_at).toLocaleString()}
+                          </p>
+                        )}
+                        {notif.read_at && (
+                          <p className="text-purple-600 dark:text-purple-400">
+                            Read: {new Date(notif.read_at).toLocaleString()}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                    {notif.error && (
+                      <div className="mt-2 p-2 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded">
+                        <p className="text-red-700 dark:text-red-300 text-sm">
+                          Error: {notif.error}
+                        </p>
+                        {notif.retry_count > 0 && (
+                          <p className="text-red-500 dark:text-red-400 text-xs mt-1">
+                            Retries: {notif.retry_count}
+                          </p>
+                        )}
+                      </div>
+                    )}
+                    {notif.message_id && (
+                      <p className="text-xs text-gray-400 mt-2">
+                        Message ID: {notif.message_id}
+                      </p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+        </div>
       </div>
 
       {/* Metadata */}

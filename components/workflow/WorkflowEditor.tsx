@@ -11,7 +11,7 @@
  * - Save/load workflow definitions
  */
 
-import React, { useState, useCallback, useRef, useMemo } from 'react';
+import React, { useState, useCallback, useRef, useMemo, useEffect } from 'react';
 import ReactFlow, {
   Node,
   Edge,
@@ -64,25 +64,33 @@ interface WorkflowEditorProps {
   readOnly?: boolean;
 }
 
-// Auto-layout using dagre
-function getLayoutedElements(nodes: Node[], edges: Edge[], direction = 'TB') {
+// Layout direction type
+type LayoutDirection = 'TB' | 'LR' | 'hybrid';
+
+const NODE_WIDTH = 250;
+const NODE_HEIGHT = 100;
+
+// Standard dagre-based auto-layout
+function getLayoutedElements(nodes: Node[], edges: Edge[], direction: LayoutDirection = 'TB') {
+  // For hybrid mode, use the special hybrid layout function
+  if (direction === 'hybrid') {
+    return getHybridLayoutedElements(nodes, edges);
+  }
+
   const dagreGraph = new dagre.graphlib.Graph();
   dagreGraph.setDefaultEdgeLabel(() => ({}));
-  
-  const nodeWidth = 250;
-  const nodeHeight = 100;
   
   const isHorizontal = direction === 'LR';
   dagreGraph.setGraph({ 
     rankdir: direction,
     nodesep: isHorizontal ? 150 : 100,
-    ranksep: isHorizontal ? 200 : 150,
+    ranksep: isHorizontal ? 200 : 75,
     marginx: 50,
     marginy: 50,
   });
 
   nodes.forEach((node) => {
-    dagreGraph.setNode(node.id, { width: nodeWidth, height: nodeHeight });
+    dagreGraph.setNode(node.id, { width: NODE_WIDTH, height: NODE_HEIGHT });
   });
 
   edges.forEach((edge) => {
@@ -98,8 +106,145 @@ function getLayoutedElements(nodes: Node[], edges: Edge[], direction = 'TB') {
       targetPosition: isHorizontal ? Position.Left : Position.Top,
       sourcePosition: isHorizontal ? Position.Right : Position.Bottom,
       position: {
-        x: nodeWithPosition.x - nodeWidth / 2,
-        y: nodeWithPosition.y - nodeHeight / 2,
+        x: nodeWithPosition.x - NODE_WIDTH / 2,
+        y: nodeWithPosition.y - NODE_HEIGHT / 2,
+      },
+    };
+  });
+
+  return { nodes: layoutedNodes, edges };
+}
+
+/**
+ * Hybrid layout: Vertical main flow with horizontal condition branches
+ * 
+ * Strategy:
+ * 1. Build a graph to understand the flow
+ * 2. Identify condition nodes and their branches
+ * 3. Use dagre for the main vertical flow (ignoring condition branches)
+ * 4. Position condition branches horizontally (left for "else", right for "then")
+ * 5. Handle loops by not offsetting branches that point to earlier nodes
+ */
+function getHybridLayoutedElements(nodes: Node[], edges: Edge[]): { nodes: Node[]; edges: Edge[] } {
+  if (nodes.length === 0) {
+    return { nodes, edges };
+  }
+
+  // Build adjacency info
+  const nodeMap = new Map<string, Node>();
+  const nodeDepth = new Map<string, number>(); // Track vertical depth of each node
+  nodes.forEach(n => nodeMap.set(n.id, n));
+
+  // Find condition nodes
+  const conditionNodes = nodes.filter(n => n.data?.type === 'condition');
+  
+  // Identify condition branch edges (then/else) - these go horizontal
+  const conditionBranchEdges = new Set<string>();
+  const thenTargets = new Map<string, string>(); // conditionId -> then target
+  const elseTargets = new Map<string, string>(); // conditionId -> else target
+  
+  edges.forEach(edge => {
+    if (edge.sourceHandle === 'then' || edge.sourceHandle === 'else') {
+      conditionBranchEdges.add(edge.id);
+      const sourceNode = nodeMap.get(edge.source);
+      if (sourceNode?.data?.type === 'condition') {
+        if (edge.sourceHandle === 'then') {
+          thenTargets.set(edge.source, edge.target);
+        } else {
+          elseTargets.set(edge.source, edge.target);
+        }
+      }
+    }
+  });
+
+  // Create a modified edge list for dagre that excludes horizontal branches
+  // but keeps the main flow intact
+  const mainFlowEdges = edges.filter(e => !conditionBranchEdges.has(e.id));
+
+  // Use dagre to layout the main vertical flow
+  const dagreGraph = new dagre.graphlib.Graph();
+  dagreGraph.setDefaultEdgeLabel(() => ({}));
+  dagreGraph.setGraph({ 
+    rankdir: 'TB',
+    nodesep: 150,  // Wider horizontal spacing to leave room for branches
+    ranksep: 75,   // Reduced vertical spacing
+    marginx: 100,
+    marginy: 50,
+  });
+
+  nodes.forEach((node) => {
+    dagreGraph.setNode(node.id, { width: NODE_WIDTH, height: NODE_HEIGHT });
+  });
+
+  mainFlowEdges.forEach((edge) => {
+    dagreGraph.setEdge(edge.source, edge.target);
+  });
+
+  dagre.layout(dagreGraph);
+
+  // Get base positions from dagre
+  const basePositions = new Map<string, { x: number; y: number }>();
+  nodes.forEach(node => {
+    const pos = dagreGraph.node(node.id);
+    if (pos) {
+      basePositions.set(node.id, { 
+        x: pos.x - NODE_WIDTH / 2, 
+        y: pos.y - NODE_HEIGHT / 2 
+      });
+      nodeDepth.set(node.id, pos.y);
+    }
+  });
+
+  // Now adjust positions for condition branches
+  // For each condition, offset its branch targets horizontally
+  const horizontalOffsets = new Map<string, number>();
+  const BRANCH_OFFSET = 300; // Horizontal offset for branches
+
+  conditionNodes.forEach(condNode => {
+    const condId = condNode.id;
+    const condDepth = nodeDepth.get(condId) || 0;
+    
+    const thenTarget = thenTargets.get(condId);
+    const elseTarget = elseTargets.get(condId);
+
+    // Check if targets are "forward" nodes (not loops back to earlier nodes)
+    // A node is a forward target if its dagre-assigned depth is >= condition's depth
+    
+    if (thenTarget && nodeMap.has(thenTarget)) {
+      const targetDepth = nodeDepth.get(thenTarget) || 0;
+      const isForwardBranch = targetDepth >= condDepth;
+      
+      if (isForwardBranch) {
+        // Offset "then" branch to the right
+        const currentOffset = horizontalOffsets.get(thenTarget) || 0;
+        horizontalOffsets.set(thenTarget, Math.max(currentOffset, BRANCH_OFFSET));
+      }
+    }
+
+    if (elseTarget && nodeMap.has(elseTarget)) {
+      const targetDepth = nodeDepth.get(elseTarget) || 0;
+      const isForwardBranch = targetDepth >= condDepth;
+      
+      if (isForwardBranch) {
+        // Offset "else" branch to the left
+        const currentOffset = horizontalOffsets.get(elseTarget) || 0;
+        horizontalOffsets.set(elseTarget, Math.min(currentOffset, -BRANCH_OFFSET));
+      }
+    }
+  });
+
+  // Apply positions with offsets
+  const layoutedNodes = nodes.map((node) => {
+    const basePos = basePositions.get(node.id) || { x: 0, y: 0 };
+    const hOffset = horizontalOffsets.get(node.id) || 0;
+    
+    return {
+      ...node,
+      targetPosition: Position.Top,
+      sourcePosition: Position.Bottom,
+      position: {
+        x: basePos.x + hOffset,
+        y: basePos.y,
       },
     };
   });
@@ -296,6 +441,38 @@ function WorkflowEditorInner({
   // State
   const [selectedStep, setSelectedStep] = useState<StepNodeData | null>(null);
   const [draggedType, setDraggedType] = useState<string | null>(null);
+  const [layoutDirection, setLayoutDirection] = useState<LayoutDirection>('hybrid');
+  const [hasInitialized, setHasInitialized] = useState(false);
+  const { fitView } = useReactFlow();
+
+  // Check if workflow has a saved layout
+  const hasSavedLayout = useMemo(() => {
+    return workflow?.layout && Object.keys(workflow.layout).length > 0;
+  }, [workflow?.layout]);
+
+  // Apply auto-layout on mount if no saved layout exists
+  useEffect(() => {
+    if (!hasInitialized && nodes.length > 0) {
+      setHasInitialized(true);
+      
+      // If no saved layout, apply auto-layout
+      if (!hasSavedLayout) {
+        const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(nodes, edges, layoutDirection);
+        setNodes(layoutedNodes);
+        setEdges(layoutedEdges);
+      }
+      
+      // Fit view with more zoom padding after a short delay to allow rendering
+      setTimeout(() => {
+        fitView({ padding: 0.3, maxZoom: 0.8 });
+      }, 50);
+    }
+  }, [hasInitialized, nodes.length, hasSavedLayout, layoutDirection, nodes, edges, setNodes, setEdges, fitView]);
+
+  // Handle click on pane (background) to deselect
+  const onPaneClick = useCallback(() => {
+    setSelectedStep(null);
+  }, []);
 
   // Handle node click for editing
   const onNodeClick = useCallback(
@@ -395,11 +572,25 @@ function WorkflowEditorInner({
   );
 
   // Auto-layout nodes
-  const handleAutoLayout = useCallback(() => {
-    const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(nodes, edges, 'TB');
+  const handleAutoLayout = useCallback((direction?: LayoutDirection) => {
+    const dir = direction || layoutDirection;
+    const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(nodes, edges, dir);
     setNodes(layoutedNodes);
     setEdges(layoutedEdges);
-  }, [nodes, edges, setNodes, setEdges]);
+    // Fit view after layout with comfortable zoom
+    setTimeout(() => {
+      fitView({ padding: 0.3, maxZoom: 0.8 });
+    }, 50);
+  }, [nodes, edges, setNodes, setEdges, layoutDirection, fitView]);
+
+  // Cycle through layout directions: hybrid -> vertical -> horizontal -> hybrid
+  const handleCycleLayoutDirection = useCallback(() => {
+    const directions: LayoutDirection[] = ['hybrid', 'TB', 'LR'];
+    const currentIndex = directions.indexOf(layoutDirection);
+    const newDirection = directions[(currentIndex + 1) % directions.length];
+    setLayoutDirection(newDirection);
+    handleAutoLayout(newDirection);
+  }, [layoutDirection, handleAutoLayout]);
 
   // Save workflow with layout positions
   const handleSave = useCallback(() => {
@@ -431,16 +622,44 @@ function WorkflowEditorInner({
           </span>
         </div>
         <div className="flex items-center gap-3">
-          <button
-            onClick={handleAutoLayout}
-            className="px-4 py-2 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-900 dark:text-gray-100 rounded-lg font-medium transition-colors flex items-center gap-2"
-            title="Automatically arrange nodes"
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 5a1 1 0 011-1h4a1 1 0 011 1v7a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM14 5a1 1 0 011-1h4a1 1 0 011 1v7a1 1 0 01-1 1h-4a1 1 0 01-1-1V5zM4 16a1 1 0 011-1h4a1 1 0 011 1v3a1 1 0 01-1 1H5a1 1 0 01-1-1v-3zM14 16a1 1 0 011-1h4a1 1 0 011 1v3a1 1 0 01-1 1h-4a1 1 0 01-1-1v-3z" />
-            </svg>
-            Auto Layout
-          </button>
+          {/* Auto Layout Button Group */}
+          <div className="flex items-center rounded-lg overflow-hidden border border-gray-200 dark:border-gray-600">
+            <button
+              onClick={() => handleAutoLayout()}
+              className="px-4 py-2 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-900 dark:text-gray-100 font-medium transition-colors flex items-center gap-2"
+              title="Automatically arrange nodes"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 5a1 1 0 011-1h4a1 1 0 011 1v7a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM14 5a1 1 0 011-1h4a1 1 0 011 1v7a1 1 0 01-1 1h-4a1 1 0 01-1-1V5zM4 16a1 1 0 011-1h4a1 1 0 011 1v3a1 1 0 01-1 1H5a1 1 0 01-1-1v-3zM14 16a1 1 0 011-1h4a1 1 0 011 1v3a1 1 0 01-1 1h-4a1 1 0 01-1-1v-3z" />
+              </svg>
+              Auto Layout
+            </button>
+            <button
+              onClick={handleCycleLayoutDirection}
+              className="px-3 py-2 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-900 dark:text-gray-100 font-medium transition-colors border-l border-gray-200 dark:border-gray-600 flex items-center gap-1"
+              title={`Current: ${layoutDirection === 'hybrid' ? 'Hybrid' : layoutDirection === 'TB' ? 'Vertical' : 'Horizontal'}. Click to cycle.`}
+            >
+              {layoutDirection === 'hybrid' ? (
+                // Hybrid layout icon (branching)
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2" />
+                </svg>
+              ) : layoutDirection === 'TB' ? (
+                // Vertical layout icon (top to bottom)
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+                </svg>
+              ) : (
+                // Horizontal layout icon (left to right)
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                </svg>
+              )}
+              <span className="text-xs min-w-[14px]">
+                {layoutDirection === 'hybrid' ? 'Y' : layoutDirection === 'TB' ? 'V' : 'H'}
+              </span>
+            </button>
+          </div>
           {onSave && !readOnly && (
             <button
               onClick={handleSave}
@@ -526,10 +745,12 @@ function WorkflowEditorInner({
             onEdgesChange={readOnly ? undefined : onEdgesChange}
             onConnect={readOnly ? undefined : onConnect}
             onNodeClick={onNodeClick}
+            onPaneClick={onPaneClick}
             onDragOver={onDragOver}
             onDrop={onDrop}
             nodeTypes={nodeTypes}
             fitView
+            fitViewOptions={{ padding: 0.3, maxZoom: 0.8 }}
             deleteKeyCode={readOnly ? null : 'Delete'}
             className="bg-gray-100 dark:bg-gray-950"
           >
