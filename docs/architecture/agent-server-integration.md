@@ -1,12 +1,16 @@
 # Agent Server Integration
 
-This document describes the integration between the agent-manager (Next.js) and the new Python agent-server.
+**Created**: 2025-12-11  
+**Last Updated**: 2026-01-19  
+**Status**: Active  
+**Category**: Architecture  
+**Related Docs**: 
+- `architecture/overview.md`
+- `guides/AUTHENTICATION.md`
 
 ## Overview
 
-The agent-manager now supports both:
-1. **Legacy Mastra Server** (Node.js) - Original agent server
-2. **Python Agent Server** (FastAPI + Pydantic AI) - New agent server with LiteLLM integration
+The agent-manager integrates with the Python agent-server (FastAPI + Pydantic AI) for all agent operations, conversations, and executions
 
 ## Architecture
 
@@ -197,33 +201,24 @@ GET http://10.96.201.202:4111/health
 
 ## Testing the Integration
 
-### 1. Start Agent Client
+### 1. Start Development Server
 ```bash
-cd /Users/wessonnenreich/Code/sonnenreich/agent-manager
 npm run dev
 ```
 
-### 2. Access Weather Demo
-Navigate to: http://localhost:3000/weather
+### 2. Test Chat Interface
+Navigate to: http://localhost:3001/chat
 
-### 3. Test Queries
-Try these example queries:
-- "What is the weather in London?"
-- "Should I bring an umbrella in Tokyo today?"
-- "What's the weather like in San Francisco?"
-- "Is it raining in Paris right now?"
+### 3. Test Agent Management
+- View agents: http://localhost:3001/agents
+- Test queries through dispatcher agent
+- Upload files for RAG search
 
 ### 4. Verify Authentication
-Check the response metadata:
-- Client ID should be displayed
-- Scopes should include `admin.read`, `admin.write`, etc.
-- Request should succeed if scopes include weather/admin/agent
-
-### 5. Test Role-Based Access
-To test access denial:
-1. Modify the admin client scopes to exclude weather/admin/agent
-2. Try accessing the weather page
-3. Should receive 403 Forbidden error
+Check browser developer tools:
+- SSO token should be present in cookies
+- API calls should include Bearer tokens
+- Authz token exchange should succeed
 
 ## Deployment
 
@@ -333,8 +328,8 @@ Allow users to:
 
 ## References
 
-- **Agent Server**: `/Users/wessonnenreich/Code/sonnenreich/busibox/srv/agent/`
-- **Agent Client**: `/Users/wessonnenreich/Code/sonnenreich/agent-manager/`
-- **Busibox Deployment**: `/Users/wessonnenreich/Code/sonnenreich/busibox/provision/ansible/`
-- **Model Registry**: `/Users/wessonnenreich/Code/sonnenreich/busibox/provision/ansible/group_vars/all/model_registry.yml`
+- **Agent Server**: `busibox/srv/agent/` - Python FastAPI backend
+- **Agent Manager**: `agent-manager/` - This Next.js application
+- **Busibox Deployment**: `busibox/provision/ansible/` - Ansible deployment
+- **Authentication Guide**: `guides/AUTHENTICATION.md` - Auth flow details
 

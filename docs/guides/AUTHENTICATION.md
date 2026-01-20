@@ -1,8 +1,17 @@
 # Agent Manager Authentication
 
+**Created**: 2025-12-11  
+**Last Updated**: 2026-01-19  
+**Status**: Active  
+**Category**: Guide  
+**Related Docs**:
+- `../architecture/overview.md`
+- `../architecture/agent-server-integration.md`
+- `../development/setup.md`
+
 ## Overview
 
-Agent-manager uses a multi-step authentication flow:
+Agent Manager uses a Zero Trust authentication architecture with multi-step token exchange:
 
 1. **User Authentication**: Users log in via ai-portal (Better Auth)
 2. **SSO Token**: ai-portal generates an SSO JWT token and redirects to agent-manager

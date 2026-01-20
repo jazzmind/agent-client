@@ -1,6 +1,13 @@
 # System Architecture Overview
 
-**Last Updated**: 2025-12-11
+**Created**: 2025-12-11  
+**Last Updated**: 2026-01-19  
+**Status**: Active  
+**Category**: Architecture  
+**Related Docs**:
+- `architecture/agent-server-integration.md`
+- `guides/AUTHENTICATION.md`
+- `../README.md`
 
 ---
 
@@ -418,11 +425,6 @@ console.log('[SSE] Connected to run:', runId);
 
 ## Related Documentation
 
-- [Frontend Architecture](./frontend.md) - Detailed frontend design
-- [API Integration](./api-integration.md) - API integration patterns
-- [Database-Free Design](./database-free.md) - Why we don't use a database
-- [Project History](./project-history.md) - Evolution of the architecture
-
----
-
-**Next**: [Frontend Architecture →](./frontend.md)
+- [Agent Server Integration](./agent-server-integration.md) - Backend API integration details
+- [Authentication Guide](../guides/AUTHENTICATION.md) - Auth flow and token exchange
+- [Documentation Index](../README.md) - Complete documentation index

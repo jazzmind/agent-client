@@ -4,7 +4,9 @@ This file provides guidance to Claude Code (claude.ai/code) and Cursor AI when w
 
 ## Project Overview
 
-**Agent Manager** is a Next.js application for managing and interacting with AI agents in the Busibox infrastructure. It provides agent configuration, workflow building, tool management, and a chat simulator for testing agents.
+**Agent Manager** is a Next.js frontend application for managing and interacting with AI agents in the Busibox infrastructure. It provides agent management, chat interface with intelligent routing, workflow building, and real-time execution monitoring.
+
+**Key Architecture**: Pure frontend application with no database access. All data operations go through backend APIs (Agent Server, Ingest API, AuthZ Service).
 
 ## Quick Start
 
@@ -56,10 +58,10 @@ make deploy-agent-manager INV=inventory/test
 
 ### Tech Stack
 
-- **Framework**: Next.js 15.5 (App Router)
-- **UI**: React 19, TypeScript 5, Tailwind CSS 4
-- **APIs**: Agent Server, Ingest API (no direct database access)
-- **Deployment**: PM2, nginx (apps-lxc container)
+- **Framework**: Next.js 16.0.10 (App Router with Turbopack)
+- **UI**: React 19.2.3, TypeScript 5, Tailwind CSS 4
+- **APIs**: Agent Server (agent-lxc:4111), Ingest API (ingest-lxc:8001), AuthZ Service (authz-lxc:8010)
+- **Deployment**: PM2, nginx (apps-lxc container), Ansible automation
 
 ### Project Structure
 
@@ -100,11 +102,21 @@ agent-manager/
 └── test/                 # Test setup
 ```
 
-### Key Principle
+### Key Principles
 
-**No Direct Database Access**: All data operations go through backend APIs:
-- Agent Server API for conversations, agents, runs
+**1. No Direct Database Access**: All data operations go through backend APIs:
+- Agent Server API for conversations, agents, runs, workflows
 - Ingest API for file uploads, RAG search
+
+**2. Zero Trust Authentication**: 
+- Session JWT from AI Portal
+- Token exchange with AuthZ Service
+- Audience-bound tokens for each backend service
+
+**3. Pure Frontend**: 
+- No business logic in frontend
+- No file storage
+- Stateless design
 
 ## Key Features
 
@@ -209,17 +221,24 @@ The application proxies requests to backend services:
 ## Environment Variables
 
 ```bash
-# Agent Server API
-NEXT_PUBLIC_AGENT_API_URL=http://agent-lxc:8000
+# Backend APIs
+NEXT_PUBLIC_AGENT_API_URL=http://10.96.201.202:4111  # Agent Server
+NEXT_PUBLIC_INGEST_API_URL=http://10.96.201.206:8001  # Ingest API
 
-# Ingest API
-NEXT_PUBLIC_INGEST_API_URL=http://ingest-lxc:8001
+# Authentication
+AUTHZ_BASE_URL=http://10.96.200.210:8010  # AuthZ Service
+AUTHZ_CLIENT_ID=agent-manager
+AUTHZ_CLIENT_SECRET=<vault-encrypted>
 
-# Auth
-AUTH_SECRET=your-secret-key
+# AI Portal (SSO)
+NEXT_PUBLIC_AI_PORTAL_URL=http://10.96.201.201:3000
+
+# Application
+PORT=3001
+NEXT_PUBLIC_BASE_PATH=/agents
 ```
 
-See `env.example` for complete configuration.
+See `env.example` for complete configuration and [Development Setup](./docs/development/setup.md) for details.
 
 ## Testing
 
@@ -325,10 +344,14 @@ pm2 restart agent-manager    # Restart app
 
 ## Documentation
 
-- **Architecture**: `docs/architecture/`
-- **Deployment**: `docs/deployment/`
-- **Development**: `docs/development/`
-- **Workflows**: `docs/workflow-*.md`
+Complete documentation is in the `/docs` directory:
+
+- **[Documentation Index](./docs/README.md)** - Complete documentation hub
+- **[Architecture Overview](./docs/architecture/overview.md)** - System design
+- **[Development Setup](./docs/development/setup.md)** - Local development
+- **[Deployment Guide](./docs/deployment/deployment-guide.md)** - Deployment procedures
+- **[Authentication Guide](./docs/guides/AUTHENTICATION.md)** - Auth flow details
+- **[Specifications](./specs/)** - Feature specifications
 
 ## Related Projects
 
@@ -340,6 +363,9 @@ pm2 restart agent-manager    # Restart app
 ## Important Notes
 
 1. **No Database Access**: This app only calls APIs, never accesses databases directly
-2. **SSE Streaming**: Agent responses use Server-Sent Events for real-time updates
-3. **Deployment**: Always deploy to test environment first
-4. **PM2**: Application runs under PM2 on apps-lxc container
+2. **Zero Trust Auth**: Uses token exchange for each backend service
+3. **SSE Streaming**: Agent responses use Server-Sent Events for real-time updates
+4. **Deployment**: Always deploy to test environment first via Ansible
+5. **PM2**: Application runs under PM2 on apps-lxc container
+6. **Port**: Runs on port 3001 (not 3000 like AI Portal)
+7. **Base Path**: Served at `/agents` path through nginx proxy

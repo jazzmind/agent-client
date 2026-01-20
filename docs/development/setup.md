@@ -1,232 +1,514 @@
-# Setup Guide for Agent Server Administration
+# Development Setup Guide
 
-This guide walks you through setting up and testing the complete agent server administration system.
+**Created**: 2026-01-19  
+**Last Updated**: 2026-01-19  
+**Status**: Active  
+**Category**: Development  
+**Related Docs**:
+- `../guides/AUTHENTICATION.md`
+- `../deployment/deployment-guide.md`
 
-## Step 1: Agent Server Setup
+## Overview
 
-1. **Navigate to agent-server directory:**
-   ```bash
-   cd ../agent-server
-   ```
+This guide walks you through setting up a local development environment for the Agent Manager application.
 
-2. **Install dependencies:**
-   ```bash
-   npm install
-   ```
+---
 
-3. **Generate authentication keys:**
-   ```bash
-   npm run setup-auth
-   ```
+## Prerequisites
 
-4. **Set up environment variables (.env):**
-   ```bash
-   # Database
-   DATABASE_URL=postgresql://user:password@localhost:5432/agent_server
+### Required Software
 
-   # Management Client Credentials
-   MANAGEMENT_CLIENT_ID=admin-client
-   MANAGEMENT_CLIENT_SECRET=super-secure-management-secret-123
+- **Node.js**: v20 or later
+- **npm**: v10 or later
+- **Git**: For cloning the repository
 
-   # Token Service (from setup-auth output)
-   TOKEN_SERVICE_PRIVATE_KEY={"kty":"OKP","crv":"Ed25519",...}
-   TOKEN_SERVICE_PUBLIC_KEY={"kty":"OKP","crv":"Ed25519",...}
+### Required Services
 
-   # JWT Secret
-   MASTRA_JWT_SECRET=your-jwt-secret-here
-   ```
+The Agent Manager requires these backend services to be running:
 
-5. **Start the agent server:**
-   ```bash
-   npm run dev
-   ```
+- **Agent Server**: Python FastAPI backend (port 8000)
+- **Ingest API**: File processing service (port 8001)
+- **AuthZ Service**: Authentication service (port 8010)
 
-## Step 2: Admin Client Setup
+You can either:
+1. Run these services locally (see Busibox documentation)
+2. Point to test environment services (recommended for frontend development)
 
-1. **Navigate to agent-manager directory:**
-   ```bash
-   cd ../agent-manager
-   ```
+---
 
-2. **Install dependencies:**
-   ```bash
-   npm install
-   ```
+## Step 1: Clone and Install
 
-3. **Set up environment variables (.env.local):**
-   ```bash
-   # Agent Server
-   MASTRA_API_URL=http://localhost:4111
+### Clone Repository
 
-   # Management Client (same as agent-server)
-   MANAGEMENT_CLIENT_ID=admin-client
-   MANAGEMENT_CLIENT_SECRET=super-secure-management-secret-123
-
-   # Chat Client Credentials (will be registered through admin UI)
-   CLIENT_ID=admin-ui-client
-   CLIENT_SECRET=will-be-generated
-
-   # OAuth Configuration
-   TOKEN_SERVICE_URL=http://localhost:4111
-   TOKEN_SERVICE_AUD=https://tools.local/admin
-   ```
-
-4. **Start the admin client:**
-   ```bash
-   npm run dev
-   ```
-
-## Step 3: Test Client Management
-
-1. **Access the admin panel:**
-   - Open http://localhost:3000/admin
-   - Go to "Client Management" tab
-
-2. **Register the admin UI client:**
-   ```json
-   {
-     "serverId": "admin-ui-client",
-     "name": "Admin UI Client",
-     "scopes": ["weather.read", "agent.execute"]
-   }
-   ```
-
-3. **Copy the generated client secret** and update your `.env.local`:
-   ```bash
-   CLIENT_SECRET=generated-secret-from-step-2
-   ```
-
-4. **Test the chat interface:**
-   - Go to http://localhost:3000
-   - Try asking: "What's the weather in New York?"
-
-## Step 4: Advanced Testing
-
-### Test Scope Enforcement
-
-1. **Create a limited client:**
-   ```json
-   {
-     "serverId": "limited-client",
-     "name": "Limited Access Client", 
-     "scopes": ["weather.read"]
-   }
-   ```
-
-2. **Test with different scopes** by updating your client credentials
-
-### Test Client Management Operations
-
-1. **List all clients** - verify the admin panel shows registered clients
-2. **Delete a client** - use the delete button and verify removal
-3. **Update client scopes** - this will be available through the register endpoint
-
-## Step 5: Database Verification
-
-Connect to your PostgreSQL database and verify the tables were created:
-
-```sql
--- Check client registrations
-SELECT * FROM client_registrations;
-
--- Check agent definitions (empty initially)
-SELECT * FROM agent_definitions;
-
--- Check workflow definitions (empty initially)
-SELECT * FROM workflow_definitions;
-
--- Check tool definitions (empty initially)  
-SELECT * FROM tool_definitions;
+```bash
+git clone <repository-url>
+cd agent-manager
 ```
 
-## Step 6: Production Deployment
+### Install Dependencies
 
-### Agent Server (Vercel)
+```bash
+npm install
+```
 
-1. **Set environment variables in Vercel:**
-   - `DATABASE_URL` - Production PostgreSQL URL
-   - `MANAGEMENT_CLIENT_ID` - Secure management client ID
-   - `MANAGEMENT_CLIENT_SECRET` - Secure management secret
-   - `TOKEN_SERVICE_PRIVATE_KEY` - From setup-auth
-   - `TOKEN_SERVICE_PUBLIC_KEY` - From setup-auth
-   - `MASTRA_JWT_SECRET` - Secure random string
+This will install:
+- Next.js 16.0.10
+- React 19.2.3
+- TypeScript 5
+- Tailwind CSS 4
+- All required dependencies
 
-2. **Deploy:**
-   ```bash
-   vercel --prod
+---
+
+## Step 2: Environment Configuration
+
+### Create Environment File
+
+```bash
+cp env.example .env.local
+```
+
+### Configure Environment Variables
+
+Edit `.env.local` with your settings:
+
+```bash
+# ============================================
+# Backend API URLs
+# ============================================
+
+# Agent Server API (Python FastAPI)
+NEXT_PUBLIC_AGENT_API_URL=http://10.96.201.202:4111  # test environment
+# NEXT_PUBLIC_AGENT_API_URL=http://localhost:8000    # local development
+
+# Ingest API (file processing)
+NEXT_PUBLIC_INGEST_API_URL=http://10.96.201.206:8001  # test environment
+# NEXT_PUBLIC_INGEST_API_URL=http://localhost:8001    # local development
+
+# ============================================
+# Authentication
+# ============================================
+
+# AuthZ Service (OAuth2 + RBAC)
+AUTHZ_BASE_URL=http://10.96.200.210:8010
+AUTHZ_CLIENT_ID=agent-manager
+AUTHZ_CLIENT_SECRET=<your-secret-here>
+
+# AI Portal (for SSO)
+NEXT_PUBLIC_AI_PORTAL_URL=http://10.96.201.201:3000  # test environment
+# NEXT_PUBLIC_AI_PORTAL_URL=http://localhost:3000    # local ai-portal
+
+# ============================================
+# Application Settings
+# ============================================
+
+# Development server port
+PORT=3001
+
+# Base path (leave empty for local dev)
+NEXT_PUBLIC_BASE_PATH=
+
+# ============================================
+# Optional Settings
+# ============================================
+
+# Enable debug logging
+# DEBUG=true
+```
+
+### Getting AuthZ Credentials
+
+Contact your infrastructure administrator to get:
+- `AUTHZ_CLIENT_ID`: Should be `agent-manager`
+- `AUTHZ_CLIENT_SECRET`: Unique secret for your client
+
+Or check the Ansible vault:
+```bash
+cd /path/to/busibox/provision/ansible
+ansible-vault view group_vars/test/vault.yml | grep agent_manager
+```
+
+---
+
+## Step 3: Start Development Server
+
+### Standard Development Mode
+
+```bash
+npm run dev
+```
+
+This starts the Next.js development server with:
+- **Port**: 3001 (configured in package.json)
+- **Hot Reload**: Automatic on file changes
+- **Fast Refresh**: React Fast Refresh enabled
+- **Turbopack**: Fast bundler (default in Next.js 16)
+
+### Webpack Mode (if needed)
+
+```bash
+npm run dev:webpack
+```
+
+Use this if you encounter Turbopack-specific issues.
+
+### Access the Application
+
+Open your browser to:
+```
+http://localhost:3001
+```
+
+---
+
+## Step 4: Verify Setup
+
+### Test Health Endpoint
+
+```bash
+curl http://localhost:3001/api/health
+```
+
+Expected response:
+```json
+{
+  "status": "ok",
+  "version": "0.1.0"
+}
+```
+
+### Test Backend Connectivity
+
+```bash
+# Test agent server
+curl http://10.96.201.202:4111/health
+
+# Test ingest API
+curl http://10.96.201.206:8001/health
+
+# Test authz service
+curl http://10.96.200.210:8010/health
+```
+
+All should return `{"status": "ok"}` or similar.
+
+### Test Authentication Flow
+
+1. Navigate to http://localhost:3001
+2. You should be redirected to AI Portal for login
+3. After login, you'll be redirected back with an SSO token
+4. The token should be exchanged for an authz token automatically
+5. You should see the agent manager interface
+
+---
+
+## Development Workflow
+
+### Running Tests
+
+```bash
+# Run all tests
+npm test
+
+# Watch mode (re-run on changes)
+npm run test:watch
+
+# With coverage report
+npm run test:coverage
+
+# Interactive UI
+npm run test:ui
+```
+
+### Type Checking
+
+```bash
+# Check TypeScript types
+npx tsc --noEmit
+
+# Or use the IDE (VS Code, Cursor, etc.)
+# TypeScript errors will show inline
+```
+
+### Linting
+
+```bash
+# Run ESLint
+npm run lint
+
+# Auto-fix issues
+npm run lint -- --fix
+```
+
+### Building for Production
+
+```bash
+# Build optimized production bundle
+npm run build
+
+# Start production server
+npm start
+```
+
+---
+
+## Project Structure
+
+```
+agent-manager/
+├── app/                    # Next.js App Router
+│   ├── api/               # API routes (proxy to backend)
+│   ├── agents/            # Agent management pages
+│   ├── chat/              # Chat interface
+│   ├── simulator/         # Agent simulator
+│   └── layout.tsx         # Root layout
+├── components/            # React components
+│   ├── agents/           # Agent-related components
+│   ├── chat/             # Chat components
+│   └── ui/               # Shared UI components
+├── lib/                   # Utilities and clients
+│   ├── agent-api-client.ts    # Agent server client
+│   ├── ingest-api-client.ts   # Ingest API client
+│   ├── auth-helper.ts         # Auth utilities
+│   └── types.ts               # TypeScript types
+├── docs/                  # Documentation
+├── specs/                 # Specifications
+└── test/                  # Test setup
+```
+
+---
+
+## Common Development Tasks
+
+### Adding a New Page
+
+1. Create page file:
+   ```typescript
+   // app/my-page/page.tsx
+   export default function MyPage() {
+     return <div>My Page</div>;
+   }
    ```
 
-### Admin Client (Vercel)
+2. Access at: http://localhost:3001/my-page
 
-1. **Set environment variables in Vercel:**
-   - `MASTRA_API_URL` - Your production agent server URL
-   - `MANAGEMENT_CLIENT_ID` - Same as agent server
-   - `MANAGEMENT_CLIENT_SECRET` - Same as agent server
-   - `CLIENT_ID` - Register through admin UI
-   - `CLIENT_SECRET` - From admin UI registration
-   - `TOKEN_SERVICE_URL` - Production agent server URL
-   - `TOKEN_SERVICE_AUD` - Your production audience
+### Adding an API Route
 
-2. **Deploy:**
-   ```bash
-   vercel --prod
+1. Create route file:
+   ```typescript
+   // app/api/my-endpoint/route.ts
+   import { NextRequest, NextResponse } from 'next/server';
+   
+   export async function GET(request: NextRequest) {
+     return NextResponse.json({ message: 'Hello' });
+   }
    ```
 
-## Common Issues and Solutions
+2. Call from frontend:
+   ```typescript
+   const response = await fetch('/api/my-endpoint');
+   const data = await response.json();
+   ```
 
-### Issue: "Management client credentials not configured"
+### Adding a Component
 
-**Solution:** Ensure `MANAGEMENT_CLIENT_ID` and `MANAGEMENT_CLIENT_SECRET` are set in both agent-server and admin-client environments.
+1. Create component file:
+   ```typescript
+   // components/MyComponent.tsx
+   export function MyComponent({ title }: { title: string }) {
+     return <h1>{title}</h1>;
+   }
+   ```
 
-### Issue: "Failed to fetch clients"
+2. Use in pages:
+   ```typescript
+   import { MyComponent } from '@/components/MyComponent';
+   
+   export default function Page() {
+     return <MyComponent title="Hello" />;
+   }
+   ```
 
-**Solutions:**
-- Verify agent server is running on the correct port
-- Check `MASTRA_API_URL` points to the correct server
-- Ensure management credentials match between services
+---
 
-### Issue: "Database connection failed"
+## Troubleshooting
 
-**Solutions:**
-- Verify PostgreSQL is running
-- Check `DATABASE_URL` format: `postgresql://user:password@host:port/database`
-- Ensure database user has CREATE TABLE permissions
+### Port Already in Use
 
-### Issue: "Token verification failed"
+**Error**: `Port 3001 is already in use`
 
-**Solutions:**
-- Regenerate keys using `npm run setup-auth`
-- Ensure `TOKEN_SERVICE_PRIVATE_KEY` and `TOKEN_SERVICE_PUBLIC_KEY` match
-- Verify token service URL is correct
+**Solution**:
+```bash
+# Find process using port 3001
+lsof -ti:3001
 
-## Security Checklist
+# Kill the process
+kill -9 $(lsof -ti:3001)
 
-- [ ] Management client credentials are secure and different from any other client
-- [ ] Database credentials are not exposed in logs or frontend
-- [ ] HTTPS is used in production
-- [ ] Client secrets are properly rotated
-- [ ] Input validation is in place for all admin operations
-- [ ] Rate limiting is configured for production
-- [ ] Database queries use prepared statements
-- [ ] Authentication logs are monitored
+# Or use a different port
+PORT=3002 npm run dev
+```
+
+### Module Not Found
+
+**Error**: `Module not found: Can't resolve '@/...'`
+
+**Solution**:
+```bash
+# Clear cache and reinstall
+rm -rf .next node_modules
+npm install
+```
+
+### TypeScript Errors
+
+**Error**: Various TypeScript compilation errors
+
+**Solution**:
+```bash
+# Check for errors
+npx tsc --noEmit
+
+# Update types
+npm install --save-dev @types/node @types/react @types/react-dom
+
+# Restart TypeScript server in IDE
+# VS Code: Cmd+Shift+P -> "TypeScript: Restart TS Server"
+```
+
+### Backend Connection Failed
+
+**Error**: `Failed to fetch from agent-server`
+
+**Solutions**:
+1. Verify backend services are running
+2. Check environment variable URLs
+3. Test connectivity with curl
+4. Check network/firewall settings
+
+### Authentication Errors
+
+**Error**: `Token exchange failed` or `Unauthorized`
+
+**Solutions**:
+1. Verify AUTHZ_CLIENT_SECRET is correct
+2. Check authz service is running
+3. Ensure AI Portal is accessible
+4. Clear browser cookies and try again
+
+---
+
+## IDE Setup
+
+### VS Code / Cursor
+
+Recommended extensions:
+- **ESLint**: For linting
+- **Prettier**: For code formatting
+- **TypeScript**: Built-in, ensure it's enabled
+- **Tailwind CSS IntelliSense**: For CSS class autocomplete
+
+Settings (`.vscode/settings.json`):
+```json
+{
+  "editor.formatOnSave": true,
+  "editor.codeActionsOnSave": {
+    "source.fixAll.eslint": true
+  },
+  "typescript.tsdk": "node_modules/typescript/lib"
+}
+```
+
+### Environment Variables in IDE
+
+Create `.env.local` for IDE to recognize environment variables.
+
+---
+
+## Testing Strategy
+
+### Unit Tests
+
+Test individual functions and components:
+```typescript
+// lib/auth-helper.test.ts
+import { extractUserId } from './auth-helper';
+
+test('extracts user ID from token', () => {
+  const token = 'eyJ...';
+  const userId = extractUserId(token);
+  expect(userId).toBe('user-123');
+});
+```
+
+### Component Tests
+
+Test React components:
+```typescript
+// components/AgentCard.test.tsx
+import { render, screen } from '@testing-library/react';
+import { AgentCard } from './AgentCard';
+
+test('renders agent name', () => {
+  render(<AgentCard agent={{ id: '1', name: 'Test Agent' }} />);
+  expect(screen.getByText('Test Agent')).toBeInTheDocument();
+});
+```
+
+### Integration Tests
+
+Test API routes and flows:
+```typescript
+// app/api/agents/route.test.ts
+import { GET } from './route';
+
+test('returns list of agents', async () => {
+  const request = new Request('http://localhost/api/agents');
+  const response = await GET(request);
+  const data = await response.json();
+  expect(Array.isArray(data)).toBe(true);
+});
+```
+
+---
+
+## Performance Tips
+
+### Development Performance
+
+- Use Turbopack (default in Next.js 16)
+- Keep component tree shallow
+- Use React.memo() for expensive components
+- Lazy load heavy components
+
+### Build Performance
+
+- Enable caching in next.config.ts
+- Use Server Components where possible
+- Minimize client-side JavaScript
+
+---
 
 ## Next Steps
 
-1. **Add Agent Definitions** - Implement the UI for creating agents programmatically
-2. **Workflow Management** - Add visual workflow builder
-3. **Tool Creation** - Implement custom tool creation interface
-4. **Monitoring** - Add metrics and logging for client usage
-5. **Backup** - Implement database backup procedures
-6. **Testing** - Add automated tests for the admin API
+After setup:
+1. Read [Architecture Overview](../architecture/overview.md)
+2. Review [Authentication Guide](../guides/AUTHENTICATION.md)
+3. Explore the codebase
+4. Run tests to verify everything works
+5. Make your first change!
 
-## Support
+---
 
-If you encounter issues:
+## Getting Help
 
-1. Check the console logs for detailed error messages
-2. Verify all environment variables are set correctly
-3. Ensure the agent server is running and accessible
-4. Check database connectivity and permissions
-5. Review the authentication flow and token generation
+- **Documentation**: Check `/docs` directory
+- **Code Examples**: Look at existing components
+- **Busibox Docs**: Infrastructure documentation
+- **Team**: Ask your team members
 
-For additional help, refer to the main README.md file.
+---
+
+**Setup Complete!** 🎉
+
+You're now ready to develop the Agent Manager application.

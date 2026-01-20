@@ -1,4 +1,4 @@
-# Agent Client
+# Agent Manager
 
 Next.js frontend for managing and interacting with AI agents in the Busibox infrastructure.
 
@@ -10,15 +10,15 @@ cp env.example .env.local
 npm run dev
 ```
 
-Visit `http://localhost:3000`
+Visit `http://localhost:3001`
 
 ## Documentation
 
 📚 **Complete documentation**: [`/docs`](./docs/README.md)
 
 - **[Architecture](./docs/architecture/overview.md)** - System design and principles
-- **[Development Guide](./docs/development/quick-start.md)** - Get started developing
-- **[Deployment](./docs/deployment/deployment-guide.md)** - Deploy to production
+- **[Development Setup](./docs/development/setup.md)** - Get started developing
+- **[Deployment Guide](./docs/deployment/deployment-guide.md)** - Deploy to production
 
 ## Key Features
 
@@ -26,17 +26,21 @@ Visit `http://localhost:3000`
 - ✅ **Chat Interface** - Interactive chat with intelligent routing
 - ✅ **File Upload** - Upload documents for RAG search
 - ✅ **Real-Time Updates** - SSE streaming for agent runs
-- ⚠️ **Workflow Builder** - Visual workflow designer (coming soon)
+- ✅ **Workflow Builder** - Visual workflow designer with execution monitoring
 
 ## Architecture
 
 ```
-Agent Client (Frontend Only)
-  ├── Calls Agent-Server API (conversations, agents, runs)
-  └── Calls Ingest API (file uploads, RAG search)
+Agent Manager (Frontend Only)
+  ├── Calls Agent Server API (conversations, agents, runs, workflows)
+  ├── Calls Ingest API (file uploads, RAG search)
+  └── Calls AuthZ Service (authentication, token exchange)
 ```
 
-**Key Principle**: No direct database access. All data operations via backend APIs.
+**Key Principles**: 
+- No direct database access
+- Zero Trust authentication
+- All data operations via backend APIs
 
 ## Tech Stack
 
@@ -80,12 +84,16 @@ NEXT_PUBLIC_INGEST_API_URL=http://ingest-lxc:8001
 
 See [`env.example`](./env.example) for complete configuration.
 
-## Contributing
+## Development
 
-See [Contributing Guide](./docs/development/contributing.md) for:
-- Code style guidelines
-- Pull request process
-- Testing requirements
+```bash
+npm run dev          # Start development server
+npm test             # Run tests
+npm run build        # Build for production
+npm start            # Start production server
+```
+
+See [Development Setup](./docs/development/setup.md) for complete instructions.
 
 ## Support
 
@@ -101,4 +109,4 @@ Part of the Busibox project.
 
 **Status**: ✅ Production Ready  
 **Version**: 0.1.0  
-**Last Updated**: 2025-12-11
+**Last Updated**: 2026-01-19

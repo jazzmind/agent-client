@@ -1,6 +1,16 @@
-# Testing & Storybook Guide - Agent Client
+# Testing & Storybook Guide
 
-This guide covers the testing setup and Storybook documentation for the agent client project.
+**Created**: 2025-12-11  
+**Last Updated**: 2026-01-19  
+**Status**: Active  
+**Category**: Development  
+**Related Docs**:
+- `setup.md`
+- `../architecture/overview.md`
+
+## Overview
+
+This guide covers the testing setup and Storybook documentation for the Agent Manager application.
 
 ## Testing Framework
 

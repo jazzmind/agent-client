@@ -59,6 +59,6 @@ ENV HOSTNAME=0.0.0.0
 HEALTHCHECK --interval=30s --timeout=10s --start-period=120s --retries=5 \
     CMD curl -f http://localhost:3001/ || exit 1
 
-# Use entrypoint script to handle npm link and start dev server
+# Use entrypoint script to handle busibox-app symlink
 ENTRYPOINT ["/usr/local/bin/dev-entrypoint.sh"]
-CMD ["npm", "run", "dev", "--", "-p", "3001"]
+CMD ["npm", "run", "dev"]

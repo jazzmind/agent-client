@@ -3,15 +3,8 @@
 # Development Entrypoint Script
 # =============================================================================
 #
-# Handles npm link for busibox-app and starts the development server.
-# Used by Dockerfile.dev for local development with live editing.
-#
-# Flow:
-#   1. Check if /busibox-app volume is mounted
-#   2. Build busibox-app (TypeScript -> JavaScript)
-#   3. Create npm link from busibox-app
-#   4. Link busibox-app in this app's node_modules
-#   5. Start the dev server with turbopack
+# Symlinks the mounted busibox-app into node_modules for hot reload.
+# busibox-app is mounted at /app/.busibox-app (inside project dir for Turbopack)
 #
 # =============================================================================
 
@@ -22,50 +15,35 @@ echo "Development Entrypoint"
 echo "========================================"
 
 # Check if busibox-app is mounted
-if [ -d "/busibox-app" ]; then
-    echo "[1/4] Found busibox-app at /busibox-app"
+BUSIBOX_MOUNT="/app/.busibox-app"
+if [ -d "$BUSIBOX_MOUNT" ] && [ -f "$BUSIBOX_MOUNT/package.json" ]; then
+    echo "[1/3] Found busibox-app at $BUSIBOX_MOUNT"
     
-    # Build busibox-app if needed
-    if [ ! -d "/busibox-app/dist" ] || [ "/busibox-app/src" -nt "/busibox-app/dist" ]; then
-        echo "[2/4] Building busibox-app..."
-        cd /busibox-app
-        
-        # Install dependencies if node_modules doesn't exist
-        if [ ! -d "node_modules" ]; then
-            echo "      Installing busibox-app dependencies..."
-            npm install --ignore-scripts
-        fi
-        
-        # Build TypeScript
-        npm run build
-        echo "      Build complete"
-    else
-        echo "[2/4] busibox-app already built (dist exists)"
+    # Check for dist
+    if [ ! -d "$BUSIBOX_MOUNT/dist" ]; then
+        echo ""
+        echo "ERROR: $BUSIBOX_MOUNT/dist not found!"
+        echo "Please build busibox-app on your host machine first:"
+        echo "  cd ../busibox-app && npm run build"
+        echo ""
+        exit 1
     fi
+    echo "[2/3] busibox-app dist found"
     
-    # Create global npm link
-    echo "[3/4] Creating npm link for @jazzmind/busibox-app..."
-    cd /busibox-app
-    npm link 2>/dev/null || true
-    
-    # Link in this app
-    echo "[4/4] Linking @jazzmind/busibox-app in /app..."
-    cd /app
-    npm link @jazzmind/busibox-app 2>/dev/null || true
-    
-    echo ""
-    echo "busibox-app linked successfully!"
-    echo "  node_modules/@jazzmind/busibox-app -> /busibox-app"
-    echo ""
+    # Symlink into node_modules
+    echo "[3/3] Symlinking busibox-app into node_modules..."
+    mkdir -p /app/node_modules/@jazzmind
+    rm -rf /app/node_modules/@jazzmind/busibox-app
+    ln -s /app/.busibox-app /app/node_modules/@jazzmind/busibox-app
+    echo "✓ Symlinked: node_modules/@jazzmind/busibox-app -> /app/.busibox-app"
 else
-    echo "[INFO] /busibox-app not mounted - using npm package"
-    echo ""
+    echo "[1/1] Using npm-installed busibox-app"
 fi
 
+echo ""
 echo "========================================"
 echo "Starting development server..."
 echo "========================================"
 echo ""
 
-# Execute the CMD (passed as arguments to this script)
 exec "$@"
