@@ -10,6 +10,13 @@ import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/components/auth/AuthContext';
 
+interface Agent {
+  id: string;
+  name: string;
+  display_name: string;
+  description?: string;
+}
+
 interface Task {
   id: string;
   name: string;
@@ -89,6 +96,7 @@ export default function TaskDetailPage() {
   const { isReady } = useAuth();
   
   const [task, setTask] = useState<Task | null>(null);
+  const [agents, setAgents] = useState<Agent[]>([]);
   const [executions, setExecutions] = useState<TaskExecution[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -99,6 +107,7 @@ export default function TaskDetailPage() {
     if (!isReady) return;
     loadTask();
     loadExecutions();
+    loadAgents();
   }, [isReady, taskId]);
 
   const loadTask = async () => {
@@ -123,6 +132,22 @@ export default function TaskDetailPage() {
     } catch (err) {
       console.error('Failed to load executions:', err);
     }
+  };
+
+  const loadAgents = async () => {
+    try {
+      const response = await fetch('/api/agents');
+      if (!response.ok) return;
+      const data = await response.json();
+      setAgents(data);
+    } catch (err) {
+      console.error('Failed to load agents:', err);
+    }
+  };
+
+  const getAgentName = (agentId: string): string => {
+    const agent = agents.find(a => a.id === agentId);
+    return agent?.display_name || agent?.name || agentId;
   };
 
   const handlePause = async () => {
@@ -258,6 +283,12 @@ export default function TaskDetailPage() {
               Resume
             </button>
           ) : null}
+          <Link
+            href={`/tasks/${task.id}/edit`}
+            className="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg transition-colors"
+          >
+            Edit
+          </Link>
           <button
             onClick={handleDelete}
             disabled={!!actionLoading}
@@ -268,13 +299,16 @@ export default function TaskDetailPage() {
         </div>
       </div>
 
-      {/* Status Badge */}
-      <div className="flex gap-2 mb-6">
+      {/* Status Badge and Agent */}
+      <div className="flex flex-wrap gap-2 mb-6">
         <span className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(task.status)}`}>
           {task.status}
         </span>
         <span className="px-3 py-1 rounded-full text-sm font-medium bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300">
           {getTriggerIcon(task.trigger_type)} {task.trigger_type}
+        </span>
+        <span className="px-3 py-1 rounded-full text-sm font-medium bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200">
+          🤖 {getAgentName(task.agent_id)}
         </span>
       </div>
 
