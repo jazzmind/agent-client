@@ -18,8 +18,14 @@ import { AuthenticationError } from './error-handler';
 // ==========================================================================
 
 /**
- * Extract JWT token from Next.js request
- * Checks Authorization header first, then cookies
+ * Extract session JWT from Next.js request
+ * 
+ * Zero Trust Architecture:
+ * - Uses the busibox-session cookie (RS256 JWT from authz)
+ * - This is the actual authz session JWT, not a custom SSO token
+ * - Can be exchanged for downstream service tokens via authz token exchange
+ * 
+ * Checks Authorization header first, then busibox-session cookie
  */
 export function getTokenFromRequest(request: NextRequest): string | undefined {
   // Check Authorization header (Bearer token)
@@ -28,13 +34,18 @@ export function getTokenFromRequest(request: NextRequest): string | undefined {
     return authHeader.substring(7);
   }
   
-  // Check cookie (httpOnly cookie set by auth system)
+  // Check busibox-session cookie (authz session JWT - shared across apps)
+  const sessionCookie = request.cookies.get('busibox-session');
+  if (sessionCookie) {
+    return sessionCookie.value;
+  }
+  
+  // Legacy fallback: check older cookie names
   const tokenCookie = request.cookies.get('auth_token');
   if (tokenCookie) {
     return tokenCookie.value;
   }
   
-  // Check alternative cookie names
   const accessTokenCookie = request.cookies.get('access_token');
   if (accessTokenCookie) {
     return accessTokenCookie.value;

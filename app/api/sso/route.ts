@@ -1,8 +1,10 @@
 /**
- * SSO Authentication Endpoint
+ * SSO Authentication Endpoint (Zero Trust)
  * 
- * Handles SSO login from ai-portal.
+ * Handles SSO login from ai-portal using authz-issued RS256 tokens.
  * URL: /api/sso?token=JWT_TOKEN
+ * 
+ * Token is validated via authz JWKS endpoint - no shared secrets needed.
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -21,9 +23,9 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    console.log('[SSO] Validating token...');
+    console.log('[SSO] Validating token via authz JWKS...');
 
-    // Validate token (both local JWT and portal backend)
+    // Validate token via authz JWKS
     const validation = await validateSSOTokenFull(token);
 
     if (!validation.valid) {
@@ -33,21 +35,30 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    console.log('[SSO] Token valid for user:', validation.email);
-    console.log('[SSO] Portal roles:', validation.roles);
-    console.log('[SSO] Entra ID roles:', validation.entraId?.roles);
-    console.log('[SSO] Entra ID groups:', validation.entraId?.groups);
+    console.log('[SSO] Token valid for user:', validation.userId);
+    console.log('[SSO] Roles:', validation.roles);
+    console.log('[SSO] Scopes:', validation.scopes);
 
     // Create session data
     const sessionData = createSessionFromSSO(validation);
 
-    // Store session in cookie (or your session store)
+    // Store session in cookie
     const cookieStore = await cookies();
     cookieStore.set('agent-manager-session', JSON.stringify(sessionData), {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
       maxAge: 60 * 60 * 24, // 24 hours
+      path: '/',
+    });
+
+    // Also store the token for API calls
+    // This token can be exchanged for downstream tokens via authz
+    cookieStore.set('auth_token', token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 60 * 15, // 15 minutes (match token expiry)
       path: '/',
     });
 
@@ -64,7 +75,7 @@ export async function GET(request: NextRequest) {
 }
 
 /**
- * POST endpoint for programmatic SSO (optional)
+ * POST endpoint for programmatic SSO
  */
 export async function POST(request: NextRequest) {
   try {
@@ -78,7 +89,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Validate token
+    // Validate token via authz JWKS
     const validation = await validateSSOTokenFull(token);
 
     if (!validation.valid) {
@@ -101,12 +112,21 @@ export async function POST(request: NextRequest) {
       path: '/',
     });
 
+    // Also store the token for API calls
+    cookieStore.set('auth_token', token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 60 * 15, // 15 minutes
+      path: '/',
+    });
+
     return NextResponse.json({
       success: true,
       user: {
-        email: validation.email,
+        userId: validation.userId,
         roles: validation.roles,
-        entraId: validation.entraId,
+        scopes: validation.scopes,
       },
     });
   } catch (error) {

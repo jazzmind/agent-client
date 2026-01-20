@@ -1,159 +1,159 @@
 /**
- * SSO Authentication Library
+ * SSO Authentication Library (Zero Trust)
  * 
- * Validates JWT tokens from ai-portal and creates local sessions.
- * Supports Entra ID roles and groups passthrough.
+ * Validates RS256 JWT tokens issued by authz service via JWKS.
+ * 
+ * Token Flow:
+ * 1. User clicks app in ai-portal
+ * 2. ai-portal exchanges user's session JWT for app-scoped token via authz
+ * 3. authz verifies user has app access via RBAC bindings
+ * 4. authz issues RS256 token with app_id claim and user's roles
+ * 5. ai-portal redirects to agent-manager with token
+ * 6. agent-manager validates token via authz JWKS
+ * 
+ * Token validation is done via authz JWKS endpoint - no shared secrets needed.
  */
 
 import * as jose from 'jose';
 
 // Environment variables
-const SSO_JWT_SECRET = process.env.SSO_JWT_SECRET || process.env.JWT_SECRET || '';
-const OAUTH_CLIENT_SECRET = process.env.OAUTH_CLIENT_SECRET || '';
-const AI_PORTAL_URL = process.env.AI_PORTAL_URL || 'https://localhost';
-const APP_ID = 'agent-manager-client'; // This should match the oauthClientId in ai-portal
+const AUTHZ_URL = process.env.AUTHZ_BASE_URL || 'http://authz-api:8010';
+const APP_NAME = process.env.APP_NAME || 'Agent Manager';
 
-if (!SSO_JWT_SECRET) {
-  console.warn('[SSO] Warning: SSO_JWT_SECRET not configured');
-}
-
-// Convert secret to Uint8Array for jose
-const secret = new TextEncoder().encode(SSO_JWT_SECRET);
+// Cache JWKS for performance
+let jwksCache: jose.JWTVerifyGetKey | null = null;
+let jwksCacheTime: number = 0;
+const JWKS_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
 // ============================================================================
 // Types
 // ============================================================================
 
-export type SSOTokenPayload = {
-  jti: string;
-  sub: string;  // userId
-  aud: string;  // appId
-  iss: string;  // 'busibox-portal'
-  iat: number;
-  exp: number;
-  email: string;
-  roles: string[];  // Portal roles
-  appName: string;
-  entraId: {
-    roles: string[];      // Entra ID application roles
-    groups: string[];     // Entra ID group IDs
-    tenantId: string | null;
-    objectId: string | null;
-  };
-};
+export interface AppTokenPayload {
+  iss: string;     // Issuer: 'authz-api'
+  sub: string;     // Subject: user ID (UUID)
+  aud: string;     // Audience: app name
+  iat: number;     // Issued at
+  exp: number;     // Expiration
+  jti: string;     // Token ID
+  scope: string;   // Space-separated scopes
+  roles: Array<{ id: string; name: string }>;  // User's roles (filtered to app-granting roles)
+  app_id?: string; // App resource ID (UUID) - present for app-scoped tokens
+}
 
-export type SSOValidationResult = {
+export interface SSOValidationResult {
   valid: boolean;
   userId?: string;
   email?: string;
   roles?: string[];
-  entraId?: {
-    roles: string[];
-    groups: string[];
-    tenantId: string | null;
-    objectId: string | null;
-  };
+  appId?: string;
+  scopes?: string[];
   error?: string;
-};
+}
+
+export interface SessionData {
+  userId: string;
+  email: string;
+  roles: string[];
+  appId: string;
+  scopes: string[];
+  authenticatedAt: string;
+  authMethod: 'sso';
+}
+
+// ============================================================================
+// JWKS Verification
+// ============================================================================
+
+/**
+ * Get or create JWKS verifier from authz service
+ */
+async function getJwksVerifier(): Promise<jose.JWTVerifyGetKey> {
+  const now = Date.now();
+  
+  // Return cached JWKS if still valid
+  if (jwksCache && (now - jwksCacheTime) < JWKS_CACHE_TTL) {
+    return jwksCache;
+  }
+  
+  // Fetch fresh JWKS from authz
+  const jwksUrl = new URL('/.well-known/jwks.json', AUTHZ_URL);
+  console.log('[SSO] Fetching JWKS from:', jwksUrl.toString());
+  
+  jwksCache = jose.createRemoteJWKSet(jwksUrl);
+  jwksCacheTime = now;
+  
+  return jwksCache;
+}
+
+/**
+ * Invalidate JWKS cache (call this if key rotation is detected)
+ */
+export function invalidateJwksCache(): void {
+  jwksCache = null;
+  jwksCacheTime = 0;
+}
 
 // ============================================================================
 // Token Validation
 // ============================================================================
 
 /**
- * Validate SSO token from ai-portal
+ * Validate app-scoped token from authz
  * 
- * This performs local JWT validation. For production, you should also
- * call the ai-portal validation endpoint to ensure the token hasn't been revoked.
+ * Token is RS256 signed by authz. We verify using authz JWKS endpoint.
+ * No shared secrets needed - asymmetric verification.
  */
 export async function validateSSOToken(token: string): Promise<SSOValidationResult> {
   try {
+    const jwks = await getJwksVerifier();
+    
     // Verify and decode token
-    const { payload } = await jose.jwtVerify(token, secret, {
-      issuer: 'busibox-portal',
-      audience: APP_ID,
+    const { payload } = await jose.jwtVerify(token, jwks, {
+      issuer: 'authz-api',
+      audience: APP_NAME,
     });
 
-    const ssoPayload = payload as unknown as SSOTokenPayload;
+    const appToken = payload as unknown as AppTokenPayload;
 
-    // Additional validation: check expiration
-    const now = Math.floor(Date.now() / 1000);
-    if (ssoPayload.exp < now) {
-      return { valid: false, error: 'Token expired' };
-    }
-
+    // Token is valid - extract user info
     return {
       valid: true,
-      userId: ssoPayload.sub,
-      email: ssoPayload.email,
-      roles: ssoPayload.roles,
-      entraId: ssoPayload.entraId,
+      userId: appToken.sub,
+      email: '', // Email not included in access tokens - get from session if needed
+      roles: appToken.roles?.map(r => r.name) || [],
+      appId: appToken.app_id,
+      scopes: appToken.scope?.split(' ').filter(Boolean) || [],
     };
   } catch (error) {
     console.error('[SSO] Token validation error:', error);
-    return { 
-      valid: false, 
-      error: error instanceof Error ? error.message : 'Invalid token' 
-    };
-  }
-}
-
-/**
- * Validate token with ai-portal backend (server-to-server)
- * 
- * This ensures the token hasn't been revoked and is still valid in the portal.
- * Call this after local JWT validation for maximum security.
- */
-export async function validateWithPortal(token: string): Promise<SSOValidationResult> {
-  try {
-    const response = await fetch(`${AI_PORTAL_URL}/api/sso/validate`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        token,
-        appId: APP_ID,
-        clientSecret: OAUTH_CLIENT_SECRET,
-      }),
-    });
-
-    if (!response.ok) {
-      const error = await response.json();
-      return { valid: false, error: error.message || 'Validation failed' };
+    
+    let errorMessage = 'Invalid token';
+    if (error instanceof jose.errors.JWTExpired) {
+      errorMessage = 'Token expired';
+    } else if (error instanceof jose.errors.JWTClaimValidationFailed) {
+      errorMessage = 'Token claims validation failed';
+    } else if (error instanceof jose.errors.JWSSignatureVerificationFailed) {
+      errorMessage = 'Token signature verification failed';
+      // Invalidate cache in case of key rotation
+      invalidateJwksCache();
     }
-
-    const result = await response.json();
-    return {
-      valid: result.valid,
-      userId: result.userId,
-      email: result.email,
-      roles: result.roles,
-      entraId: result.entraId,
-      error: result.error,
-    };
-  } catch (error) {
-    console.error('[SSO] Portal validation error:', error);
+    
     return { 
       valid: false, 
-      error: error instanceof Error ? error.message : 'Portal validation failed' 
+      error: errorMessage,
     };
   }
 }
 
 /**
- * Full validation: Local JWT + Portal backend check
+ * Full validation - just validates the token via JWKS
+ * 
+ * With authz-issued tokens, we don't need a separate "portal validation" step
+ * since the token is cryptographically signed by authz and contains all claims.
  */
 export async function validateSSOTokenFull(token: string): Promise<SSOValidationResult> {
-  // First, validate JWT locally (fast)
-  const localResult = await validateSSOToken(token);
-  if (!localResult.valid) {
-    return localResult;
-  }
-
-  // Then, validate with portal (ensures not revoked)
-  const portalResult = await validateWithPortal(token);
-  return portalResult;
+  return validateSSOToken(token);
 }
 
 // ============================================================================
@@ -161,48 +161,41 @@ export async function validateSSOTokenFull(token: string): Promise<SSOValidation
 // ============================================================================
 
 /**
- * Create session data from SSO token
- * 
- * Use this to populate your app's session after successful SSO validation.
+ * Create session data from validated SSO token
  */
-export function createSessionFromSSO(validation: SSOValidationResult) {
-  if (!validation.valid || !validation.userId || !validation.email) {
+export function createSessionFromSSO(validation: SSOValidationResult): SessionData {
+  if (!validation.valid || !validation.userId) {
     throw new Error('Invalid SSO validation result');
   }
 
   return {
     userId: validation.userId,
-    email: validation.email,
+    email: validation.email || '',
     roles: validation.roles || [],
-    entraId: validation.entraId || {
-      roles: [],
-      groups: [],
-      tenantId: null,
-      objectId: null,
-    },
+    appId: validation.appId || '',
+    scopes: validation.scopes || [],
     authenticatedAt: new Date().toISOString(),
     authMethod: 'sso',
   };
 }
 
 /**
- * Check if user has specific Entra ID role
+ * Check if user has specific role
  */
-export function hasEntraIdRole(session: { entraId?: { roles: string[] } }, roleName: string): boolean {
-  return session.entraId?.roles?.includes(roleName) || false;
-}
-
-/**
- * Check if user is in specific Entra ID group
- */
-export function inEntraIdGroup(session: { entraId?: { groups: string[] } }, groupId: string): boolean {
-  return session.entraId?.groups?.includes(groupId) || false;
-}
-
-/**
- * Check if user has portal role
- */
-export function hasPortalRole(session: { roles?: string[] }, roleName: string): boolean {
+export function hasRole(session: { roles?: string[] }, roleName: string): boolean {
   return session.roles?.includes(roleName) || false;
 }
 
+/**
+ * Check if user has specific scope
+ */
+export function hasScope(session: { scopes?: string[] }, scope: string): boolean {
+  return session.scopes?.includes(scope) || false;
+}
+
+/**
+ * Check if user is admin
+ */
+export function isAdmin(session: { roles?: string[] }): boolean {
+  return hasRole(session, 'Admin');
+}

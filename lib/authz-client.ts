@@ -2,9 +2,11 @@
  * AuthZ Client for Agent Manager
  *
  * Zero Trust Authentication Architecture:
- * - Uses session JWT from ai-portal as subject_token
+ * - Uses busibox-session cookie (RS256 JWT from authz) as subject_token
+ * - This is the actual authz session JWT, shared across all busibox apps
  * - NO client credentials required for user operations
  * - The session JWT cryptographically proves user identity
+ * - Can be exchanged for downstream service tokens via authz token exchange
  *
  * This module uses the shared Zero Trust functions from busibox-app.
  */
@@ -31,25 +33,25 @@ function getAuthzBaseUrl(): string {
 }
 
 /**
- * Exchange SSO token for an authz token (Zero Trust)
+ * Exchange session JWT for an authz access token (Zero Trust)
  *
- * The SSO token from ai-portal IS a session JWT - use it directly as subject_token.
- * No client credentials required.
+ * Uses the busibox-session cookie value (RS256 JWT from authz) as subject_token.
+ * No client credentials required - the session JWT cryptographically proves user identity.
  *
- * @param ssoToken - The SSO token from ai-portal (this is the session JWT)
+ * @param sessionJwt - The session JWT from busibox-session cookie
  * @param audience - The target service (e.g., 'agent-api')
  * @param scopes - Optional scopes to request
  * @returns Authz token response
  */
 export async function exchangeForAuthzToken(
-  ssoToken: string,
+  sessionJwt: string,
   audience: AuthzAudience,
   scopes?: string[]
 ): Promise<AuthzTokenResponse> {
-  // The SSO token IS the session JWT - use it directly for Zero Trust exchange
+  // Use the session JWT for Zero Trust token exchange
   const result = await exchangeTokenZeroTrust(
     {
-      sessionJwt: ssoToken,
+      sessionJwt,
       audience,
       scopes,
       purpose: 'agent-manager',
@@ -71,11 +73,11 @@ export async function exchangeForAuthzToken(
 /**
  * Get an authz token for agent-api calls (Zero Trust)
  *
- * @param ssoToken - The SSO token from ai-portal (session JWT)
+ * @param sessionJwt - The session JWT from busibox-session cookie
  * @returns Bearer token string for Authorization header
  */
-export async function getAgentApiToken(ssoToken: string): Promise<string> {
-  const result = await exchangeForAuthzToken(ssoToken, 'agent-api', ['agents:read', 'agents:write']);
+export async function getAgentApiToken(sessionJwt: string): Promise<string> {
+  const result = await exchangeForAuthzToken(sessionJwt, 'agent-api', ['agents:read', 'agents:write']);
   return result.accessToken;
 }
 
@@ -107,15 +109,17 @@ export async function getAgentApiTokenForTestUser(userId: string): Promise<strin
 
 /**
  * Get authorization header using Zero Trust exchange
+ * 
+ * @param sessionJwt - The session JWT from busibox-session cookie
  */
 export async function getAuthorizationHeader(
-  ssoToken: string,
+  sessionJwt: string,
   audience: AuthzAudience,
   scopes?: string[]
 ): Promise<string> {
   return getAuthHeaderZeroTrust(
     {
-      sessionJwt: ssoToken,
+      sessionJwt,
       audience,
       scopes,
       purpose: 'agent-manager',
