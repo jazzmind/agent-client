@@ -1,25 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
+import { getAuthHeaders } from '@/lib/auth-helper';
+import { getAgentApiUrl } from '@/lib/agent-api-client';
+import { requireAuthWithTokenExchange } from '@/lib/auth-middleware';
 
-const AGENT_API_URL = process.env.AGENT_API_URL || 'http://localhost:8000';
-
-async function getAuthHeaders() {
-  const cookieStore = await cookies();
-  const token = cookieStore.get('access_token')?.value;
-  
-  if (!token) {
-    throw new Error('Not authenticated');
-  }
-  
-  return {
-    'Authorization': `Bearer ${token}`,
-    'Content-Type': 'application/json',
-  };
-}
+const AGENT_API_URL = getAgentApiUrl();
 
 export async function GET(request: NextRequest) {
   try {
-    const headers = await getAuthHeaders();
+    // Authenticate and exchange token for agent-api access
+    const auth = await requireAuthWithTokenExchange(request);
+    if (auth instanceof NextResponse) {
+      return auth; // Return error response
+    }
+
+    const headers = getAuthHeaders(auth.agentApiToken);
     const { searchParams } = new URL(request.url);
     
     const response = await fetch(`${AGENT_API_URL}/tasks?${searchParams.toString()}`, {
@@ -47,7 +41,13 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const headers = await getAuthHeaders();
+    // Authenticate and exchange token for agent-api access
+    const auth = await requireAuthWithTokenExchange(request);
+    if (auth instanceof NextResponse) {
+      return auth; // Return error response
+    }
+
+    const headers = getAuthHeaders(auth.agentApiToken);
     const body = await request.json();
     
     const response = await fetch(`${AGENT_API_URL}/tasks`, {

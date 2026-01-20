@@ -218,6 +218,8 @@ export function getUserIdFromToken(token: string): string | null {
 
 /**
  * Get user roles from token
+ * 
+ * Handles both string roles and object roles ({id, name}) from authz tokens
  */
 export function getUserRolesFromToken(token: string): string[] {
   const payload = parseJWTPayload(token);
@@ -227,7 +229,21 @@ export function getUserRolesFromToken(token: string): string[] {
   
   // Check common JWT claim names for roles
   const roles = payload.roles || payload.role || payload.permissions || [];
-  return Array.isArray(roles) ? roles : [roles];
+  
+  if (!Array.isArray(roles)) {
+    return typeof roles === 'string' ? [roles] : [];
+  }
+  
+  // Map role objects to strings if needed (authz tokens have {id, name} objects)
+  return roles.map((role: any) => {
+    if (typeof role === 'string') {
+      return role;
+    }
+    if (role && typeof role === 'object' && role.name) {
+      return role.name;
+    }
+    return String(role);
+  });
 }
 
 /**

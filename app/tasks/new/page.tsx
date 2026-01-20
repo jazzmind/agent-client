@@ -18,17 +18,17 @@ interface Agent {
 }
 
 const SCHEDULE_PRESETS = [
-  { value: 'every_5_minutes', label: 'Every 5 minutes' },
-  { value: 'every_15_minutes', label: 'Every 15 minutes' },
-  { value: 'every_30_minutes', label: 'Every 30 minutes' },
-  { value: 'hourly', label: 'Hourly' },
-  { value: 'every_2_hours', label: 'Every 2 hours' },
-  { value: 'every_6_hours', label: 'Every 6 hours' },
-  { value: 'daily', label: 'Daily (9 AM)' },
-  { value: 'daily_morning', label: 'Daily Morning (9 AM)' },
-  { value: 'daily_evening', label: 'Daily Evening (6 PM)' },
-  { value: 'weekly', label: 'Weekly (Monday 9 AM)' },
-  { value: 'monthly', label: 'Monthly (1st, 9 AM)' },
+  { value: '*/5 * * * *', label: 'Every 5 minutes' },
+  { value: '*/15 * * * *', label: 'Every 15 minutes' },
+  { value: '*/30 * * * *', label: 'Every 30 minutes' },
+  { value: '0 * * * *', label: 'Hourly' },
+  { value: '0 */2 * * *', label: 'Every 2 hours' },
+  { value: '0 */6 * * *', label: 'Every 6 hours' },
+  { value: '0 9 * * *', label: 'Daily (9 AM)' },
+  { value: '0 9 * * *', label: 'Daily Morning (9 AM)' },
+  { value: '0 18 * * *', label: 'Daily Evening (6 PM)' },
+  { value: '0 9 * * 1', label: 'Weekly (Monday 9 AM)' },
+  { value: '0 9 1 * *', label: 'Monthly (1st, 9 AM)' },
   { value: 'custom', label: 'Custom Cron Expression' },
 ];
 
@@ -60,7 +60,7 @@ export default function CreateTaskPage() {
   const [agentId, setAgentId] = useState('');
   const [prompt, setPrompt] = useState('');
   const [triggerType, setTriggerType] = useState('cron');
-  const [schedulePreset, setSchedulePreset] = useState('daily');
+  const [schedulePreset, setSchedulePreset] = useState('0 9 * * *');
   const [customCron, setCustomCron] = useState('0 9 * * *');
   const [oneTimeDate, setOneTimeDate] = useState('');
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);

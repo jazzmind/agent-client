@@ -97,6 +97,9 @@ function AppShellContent({ children, basePath }: { children: React.ReactNode; ba
           <Link href="/" className="text-sm font-medium text-gray-900 dark:text-gray-100 hover:text-blue-600 dark:hover:text-blue-400">
             Agents
           </Link>
+          <Link href="/tasks" className="text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400">
+            Tasks
+          </Link>
           <Link href="/tools" className="text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400">
             Tools
           </Link>

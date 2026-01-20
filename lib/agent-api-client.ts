@@ -13,7 +13,22 @@
  * Based on OpenAPI spec: specs/001-agent-management-rebuild/contracts/agent-server-api.yaml
  */
 
-const AGENT_API_URL = process.env.NEXT_PUBLIC_AGENT_API_URL || 'http://10.96.200.202:8000';
+// Server-side: use internal container URL (AGENT_API_HOST:AGENT_API_PORT)
+// Client-side: use public URL via nginx (NEXT_PUBLIC_AGENT_API_URL)
+export function getAgentApiUrl(): string {
+  // Server-side: prefer internal container URL
+  if (typeof window === 'undefined') {
+    const host = process.env.AGENT_API_HOST;
+    const port = process.env.AGENT_API_PORT || '8000';
+    if (host) {
+      return `http://${host}:${port}`;
+    }
+  }
+  // Client-side or fallback: use public URL
+  return process.env.NEXT_PUBLIC_AGENT_API_URL || 'http://agent-api:8000';
+}
+
+const AGENT_API_URL = getAgentApiUrl();
 
 // ==========================================================================
 // TYPES

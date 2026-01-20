@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getTokenFromRequest, getScopesFromToken, getUserIdFromToken } from '@/lib/auth-helper';
+import { getAgentApiUrl } from '@/lib/agent-api-client';
 
-const AGENT_API_URL = process.env.NEXT_PUBLIC_AGENT_API_URL || 'http://10.96.200.202:8000';
+const AGENT_API_URL = getAgentApiUrl();
 
 /**
  * Query the weather agent

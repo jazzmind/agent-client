@@ -63,7 +63,14 @@ export async function POST(request: NextRequest) {
     }
 
     // Exchange SSO token for fresh authz token
-    console.log('[AUTH/REFRESH] Exchanging SSO token for fresh authz token');
+    // Log token details for debugging
+    const tokenPayload = parseJWTPayload(ssoToken);
+    console.log('[AUTH/REFRESH] Exchanging SSO token for fresh authz token', {
+      typ: tokenPayload?.typ,
+      aud: tokenPayload?.aud,
+      app_id: tokenPayload?.app_id,
+      sub: tokenPayload?.sub,
+    });
     const agentApiToken = await getAgentApiToken(ssoToken);
     
     // Update the auth_token cookie with the new authz token
