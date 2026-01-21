@@ -54,6 +54,7 @@ interface WorkflowEditorProps {
     id?: string;
     name: string;
     description?: string;
+    layout?: any;
     steps: any[];
     trigger?: any;
     guardrails?: any;
