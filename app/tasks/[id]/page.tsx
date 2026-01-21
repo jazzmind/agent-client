@@ -24,6 +24,12 @@ interface Workflow {
   is_builtin?: boolean;
 }
 
+interface NotificationChannelConfig {
+  channel: string;
+  recipient: string;
+  enabled?: boolean;
+}
+
 interface Task {
   id: string;
   name: string;
@@ -40,12 +46,22 @@ interface Task {
     enabled?: boolean;
     channel?: string;
     recipient?: string;
+    channels?: NotificationChannelConfig[];
     include_summary?: boolean;
+    on_success?: boolean;
+    on_failure?: boolean;
   };
   insights_config: {
     enabled?: boolean;
     max_insights?: number;
     purge_after_days?: number;
+  };
+  output_saving_config?: {
+    enabled?: boolean;
+    library_type?: string;
+    tags?: string[];
+    title_template?: string;
+    on_success_only?: boolean;
   };
   delegation_scopes: string[];
   delegation_expires_at?: string;
@@ -171,7 +187,9 @@ export default function TaskDetailPage() {
   const [runDetails, setRunDetails] = useState<Record<string, RunRecord>>({});
   const [loadingRun, setLoadingRun] = useState<string | null>(null);
   const [notifications, setNotifications] = useState<TaskNotification[]>([]);
-  const [activeTab, setActiveTab] = useState<'executions' | 'notifications'>('executions');
+  const [activeTab, setActiveTab] = useState<'executions' | 'notifications' | 'insights'>('executions');
+  const [insights, setInsights] = useState<{id: string; content: string; createdAt: string; executionId?: string}[]>([]);
+  const [insightsCount, setInsightsCount] = useState(0);
 
   useEffect(() => {
     if (!isReady) return;
@@ -180,6 +198,7 @@ export default function TaskDetailPage() {
     loadAgents();
     loadWorkflows();
     loadNotifications();
+    loadInsights();
   }, [isReady, taskId]);
 
   const loadTask = async () => {
@@ -236,6 +255,18 @@ export default function TaskDetailPage() {
       setNotifications(data.notifications || []);
     } catch (err) {
       console.error('Failed to load notifications:', err);
+    }
+  };
+
+  const loadInsights = async () => {
+    try {
+      const response = await fetch(`/api/tasks/${taskId}/insights?limit=50`);
+      if (!response.ok) return;
+      const data = await response.json();
+      setInsights(data.insights || []);
+      setInsightsCount(data.count || 0);
+    } catch (err) {
+      console.error('Failed to load insights:', err);
     }
   };
 
@@ -346,6 +377,65 @@ export default function TaskDetailPage() {
     } catch (err) {
       alert(`Failed to delete task: ${err instanceof Error ? err.message : 'Unknown error'}`);
       setActionLoading(null);
+    }
+  };
+
+  const handleRefreshDelegation = async () => {
+    setActionLoading('refresh-token');
+    try {
+      const response = await fetch(`/api/tasks/${taskId}/refresh-token`, { method: 'POST' });
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({ detail: 'Unknown error' }));
+        throw new Error(error.detail || 'Failed to refresh token');
+      }
+      await loadTask();
+      alert('Delegation token refreshed successfully. New expiry: 3 years.');
+    } catch (err) {
+      alert(`Failed to refresh token: ${err instanceof Error ? err.message : 'Unknown error'}`);
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  // Helper to get notification channels from config
+  const getNotificationChannels = (): NotificationChannelConfig[] => {
+    if (!task?.notification_config?.enabled) return [];
+    
+    // Check for new multi-channel format
+    if (task.notification_config.channels && task.notification_config.channels.length > 0) {
+      return task.notification_config.channels.filter(ch => ch.enabled !== false);
+    }
+    
+    // Fallback to legacy single-channel format
+    if (task.notification_config.recipient) {
+      return [{
+        channel: task.notification_config.channel || 'email',
+        recipient: task.notification_config.recipient,
+        enabled: true,
+      }];
+    }
+    
+    return [];
+  };
+
+  // Helper to check if delegation token is expired or expiring soon
+  const getDelegationTokenStatus = (): { status: 'ok' | 'expiring' | 'expired'; text: string; color: string } => {
+    if (!task?.delegation_expires_at) {
+      return { status: 'expired', text: 'Not set', color: 'text-gray-500 dark:text-gray-400' };
+    }
+    
+    const expiresAt = new Date(task.delegation_expires_at);
+    const now = new Date();
+    const daysUntilExpiry = Math.floor((expiresAt.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+    
+    if (daysUntilExpiry < 0) {
+      return { status: 'expired', text: 'Expired', color: 'text-red-600 dark:text-red-400' };
+    } else if (daysUntilExpiry < 30) {
+      return { status: 'expiring', text: `Expires in ${daysUntilExpiry} days`, color: 'text-yellow-600 dark:text-yellow-400' };
+    } else if (daysUntilExpiry < 365) {
+      return { status: 'ok', text: `Expires in ${Math.floor(daysUntilExpiry / 30)} months`, color: 'text-green-600 dark:text-green-400' };
+    } else {
+      return { status: 'ok', text: `Expires in ${Math.floor(daysUntilExpiry / 365)} years`, color: 'text-green-600 dark:text-green-400' };
     }
   };
 
@@ -507,6 +597,83 @@ export default function TaskDetailPage() {
                 </div>
               </div>
             )}
+
+            {/* Delegation Token */}
+            <div className="pt-2 border-t border-gray-200 dark:border-gray-700">
+              <label className="text-sm text-gray-600 dark:text-gray-400">Delegation Token</label>
+              <div className="flex items-center justify-between mt-1">
+                <div>
+                  <span className={`text-sm font-medium ${getDelegationTokenStatus().color}`}>
+                    {getDelegationTokenStatus().text}
+                  </span>
+                  {task.delegation_expires_at && (
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                      Expires: {new Date(task.delegation_expires_at).toLocaleDateString()}
+                    </p>
+                  )}
+                </div>
+                <button
+                  onClick={handleRefreshDelegation}
+                  disabled={!!actionLoading}
+                  className="px-3 py-1 text-sm bg-blue-100 hover:bg-blue-200 dark:bg-blue-900 dark:hover:bg-blue-800 text-blue-700 dark:text-blue-300 rounded transition-colors disabled:opacity-50"
+                >
+                  {actionLoading === 'refresh-token' ? 'Refreshing...' : 'Refresh'}
+                </button>
+              </div>
+            </div>
+
+            {/* Notification Channels */}
+            <div className="pt-2 border-t border-gray-200 dark:border-gray-700">
+              <label className="text-sm text-gray-600 dark:text-gray-400">Notifications</label>
+              {!task.notification_config?.enabled ? (
+                <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Disabled</p>
+              ) : (
+                <div className="mt-1 space-y-1">
+                  {getNotificationChannels().length === 0 ? (
+                    <p className="text-sm text-yellow-600 dark:text-yellow-400">Enabled but no channels configured</p>
+                  ) : (
+                    getNotificationChannels().map((ch, idx) => (
+                      <div key={idx} className="flex items-center gap-2 text-sm">
+                        <span className="px-2 py-0.5 rounded text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300">
+                          {ch.channel === 'email' ? '📧' : ch.channel === 'teams' ? '💬' : ch.channel === 'slack' ? '💬' : '🔗'} {ch.channel}
+                        </span>
+                        <span className="text-gray-600 dark:text-gray-400 truncate max-w-[200px]" title={ch.recipient}>
+                          {ch.recipient.length > 30 ? ch.recipient.slice(0, 30) + '...' : ch.recipient}
+                        </span>
+                      </div>
+                    ))
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Output Saving */}
+            <div className="pt-2 border-t border-gray-200 dark:border-gray-700">
+              <label className="text-sm text-gray-600 dark:text-gray-400">Save Output to Library</label>
+              {!task.output_saving_config?.enabled ? (
+                <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Disabled</p>
+              ) : (
+                <div className="mt-1">
+                  <div className="flex items-center gap-2 text-sm">
+                    <span className="px-2 py-0.5 rounded text-xs font-medium bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300">
+                      Enabled
+                    </span>
+                    <span className="text-gray-600 dark:text-gray-400">
+                      → {task.output_saving_config.library_type || 'TASKS'} library
+                    </span>
+                  </div>
+                  {task.output_saving_config.tags && task.output_saving_config.tags.length > 0 && (
+                    <div className="flex flex-wrap gap-1 mt-1">
+                      {task.output_saving_config.tags.map((tag, idx) => (
+                        <span key={idx} className="px-1.5 py-0.5 rounded text-xs bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400">
+                          #{tag}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
@@ -567,6 +734,16 @@ export default function TaskDetailPage() {
             }`}
           >
             Notifications ({notifications.length})
+          </button>
+          <button
+            onClick={() => setActiveTab('insights')}
+            className={`px-6 py-3 text-sm font-medium transition-colors ${
+              activeTab === 'insights'
+                ? 'text-blue-600 dark:text-blue-400 border-b-2 border-blue-600 dark:border-blue-400 bg-blue-50 dark:bg-blue-900/20'
+                : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100'
+            }`}
+          >
+            Insights ({insightsCount})
           </button>
         </div>
 
@@ -828,6 +1005,66 @@ export default function TaskDetailPage() {
                         Message ID: {notif.message_id}
                       </p>
                     )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Insights Tab */}
+        {activeTab === 'insights' && (
+          <div>
+            {/* Configuration Summary */}
+            {task.insights_config && (
+              <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4 mb-6">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-4 text-sm">
+                    <span className={`px-2 py-1 rounded ${
+                      task.insights_config.enabled 
+                        ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+                        : 'bg-gray-100 text-gray-800 dark:bg-gray-600 dark:text-gray-300'
+                    }`}>
+                      {task.insights_config.enabled ? 'Enabled' : 'Disabled'}
+                    </span>
+                    <span className="text-gray-500 dark:text-gray-400">
+                      Max: {task.insights_config.max_insights || 50} insights
+                    </span>
+                  </div>
+                  <Link
+                    href={`/tasks/${taskId}/insights`}
+                    className="text-blue-600 hover:text-blue-700 dark:text-blue-400 text-sm"
+                  >
+                    View full insights page →
+                  </Link>
+                </div>
+              </div>
+            )}
+
+            {insights.length === 0 ? (
+              <div className="text-center py-8">
+                <div className="text-4xl mb-4">🧠</div>
+                <p className="text-gray-500 dark:text-gray-400">
+                  No insights yet. Insights will be saved after task executions complete successfully.
+                </p>
+                <p className="text-gray-400 dark:text-gray-500 text-sm mt-2">
+                  Insights help avoid sending duplicate information by remembering previous results.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {insights.map((insight) => (
+                  <div
+                    key={insight.id}
+                    className="p-4 bg-gray-50 dark:bg-gray-700 rounded-lg"
+                  >
+                    <p className="text-gray-900 dark:text-gray-100 text-sm">{insight.content}</p>
+                    <div className="mt-2 text-xs text-gray-500 dark:text-gray-400 flex items-center gap-4">
+                      <span>Created: {new Date(insight.createdAt).toLocaleString()}</span>
+                      {insight.executionId && (
+                        <span>Execution: {insight.executionId.slice(0, 8)}...</span>
+                      )}
+                    </div>
                   </div>
                 ))}
               </div>

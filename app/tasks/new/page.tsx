@@ -48,6 +48,12 @@ const NOTIFICATION_CHANNELS = [
   { value: 'webhook', label: 'Webhook', icon: '🔗' },
 ];
 
+interface NotificationChannelConfig {
+  channel: string;
+  recipient: string;
+  enabled: boolean;
+}
+
 const TRIGGER_TYPES = [
   { value: 'cron', label: 'Scheduled (Cron)', description: 'Run on a recurring schedule' },
   { value: 'webhook', label: 'Webhook', description: 'Trigger via HTTP webhook' },
@@ -76,10 +82,15 @@ export default function CreateTaskPage() {
   const [customCron, setCustomCron] = useState('0 9 * * *');
   const [oneTimeDate, setOneTimeDate] = useState('');
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
-  const [notificationChannel, setNotificationChannel] = useState('email');
-  const [notificationRecipient, setNotificationRecipient] = useState('');
+  const [notificationChannels, setNotificationChannels] = useState<NotificationChannelConfig[]>([
+    { channel: 'email', recipient: '', enabled: true }
+  ]);
   const [insightsEnabled, setInsightsEnabled] = useState(true);
   const [maxInsights, setMaxInsights] = useState(50);
+  
+  // Output saving state
+  const [outputSavingEnabled, setOutputSavingEnabled] = useState(false);
+  const [outputSavingTags, setOutputSavingTags] = useState('');
 
   useEffect(() => {
     if (!isReady) return;
@@ -124,9 +135,13 @@ export default function CreateTaskPage() {
       return;
     }
 
-    if (notificationsEnabled && !notificationRecipient.trim()) {
-      setError('Please provide a notification recipient');
-      return;
+    // Validate that at least one channel has a recipient if notifications enabled
+    if (notificationsEnabled) {
+      const enabledChannels = notificationChannels.filter(ch => ch.enabled && ch.recipient.trim());
+      if (enabledChannels.length === 0) {
+        setError('Please configure at least one notification channel with a recipient');
+        return;
+      }
     }
 
     setSubmitting(true);
@@ -144,12 +159,14 @@ export default function CreateTaskPage() {
       // Build notification config
       let notificationConfig: any = null;
       if (notificationsEnabled) {
+        const enabledChannels = notificationChannels.filter(ch => ch.enabled && ch.recipient.trim());
         notificationConfig = {
           enabled: true,
-          channel: notificationChannel,
-          recipient: notificationRecipient,
+          channels: enabledChannels,
           include_summary: true,
           include_portal_link: true,
+          on_success: true,
+          on_failure: true,
         };
       }
 
@@ -171,6 +188,12 @@ export default function CreateTaskPage() {
         trigger_config: triggerConfig,
         notification_config: notificationConfig,
         insights_config: insightsConfig,
+        output_saving_config: outputSavingEnabled ? {
+          enabled: true,
+          library_type: 'TASKS',
+          tags: outputSavingTags.split(',').map(t => t.trim()).filter(t => t),
+          on_success_only: true,
+        } : { enabled: false },
         scopes: ['search.read', 'web_search.read'],
       };
       
@@ -461,49 +484,101 @@ export default function CreateTaskPage() {
           
           {notificationsEnabled && (
             <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Channel
-                </label>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                  {NOTIFICATION_CHANNELS.map((channel) => (
-                    <button
-                      key={channel.value}
-                      type="button"
-                      onClick={() => setNotificationChannel(channel.value)}
-                      className={`p-2 border rounded-lg text-center transition-colors ${
-                        notificationChannel === channel.value
-                          ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
-                          : 'border-gray-200 dark:border-gray-600 hover:border-gray-300'
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                Configure one or more notification channels. Enable multiple channels to receive notifications on all of them.
+              </p>
+              
+              {/* Channel list */}
+              <div className="space-y-3">
+                {NOTIFICATION_CHANNELS.map((channelDef) => {
+                  const channelConfig = notificationChannels.find(ch => ch.channel === channelDef.value);
+                  const isEnabled = channelConfig?.enabled || false;
+                  const recipient = channelConfig?.recipient || '';
+                  
+                  return (
+                    <div 
+                      key={channelDef.value}
+                      className={`border rounded-lg p-4 transition-colors ${
+                        isEnabled 
+                          ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20' 
+                          : 'border-gray-200 dark:border-gray-600'
                       }`}
                     >
-                      <span className="text-lg">{channel.icon}</span>
-                      <div className="text-xs text-gray-700 dark:text-gray-300 mt-1">
-                        {channel.label}
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center gap-2">
+                          <span className="text-lg">{channelDef.icon}</span>
+                          <span className="font-medium text-gray-900 dark:text-gray-100">
+                            {channelDef.label}
+                          </span>
+                        </div>
+                        <label className="flex items-center">
+                          <input
+                            type="checkbox"
+                            checked={isEnabled}
+                            onChange={(e) => {
+                              setNotificationChannels(prev => {
+                                const existing = prev.find(ch => ch.channel === channelDef.value);
+                                if (existing) {
+                                  return prev.map(ch => 
+                                    ch.channel === channelDef.value 
+                                      ? { ...ch, enabled: e.target.checked }
+                                      : ch
+                                  );
+                                } else {
+                                  return [...prev, { 
+                                    channel: channelDef.value, 
+                                    recipient: '', 
+                                    enabled: e.target.checked 
+                                  }];
+                                }
+                              });
+                            }}
+                            className="mr-2"
+                          />
+                          <span className="text-sm text-gray-600 dark:text-gray-400">Enable</span>
+                        </label>
                       </div>
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  {notificationChannel === 'email' ? 'Email Address' : 
-                   notificationChannel === 'webhook' ? 'Webhook URL' : 
-                   'Webhook URL'} *
-                </label>
-                <input
-                  type={notificationChannel === 'email' ? 'email' : 'url'}
-                  value={notificationRecipient}
-                  onChange={(e) => setNotificationRecipient(e.target.value)}
-                  placeholder={
-                    notificationChannel === 'email' 
-                      ? 'you@example.com' 
-                      : 'https://hooks.example.com/webhook'
-                  }
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
-                  required={notificationsEnabled}
-                />
+                      
+                      {isEnabled && (
+                        <div>
+                          <input
+                            type={channelDef.value === 'email' ? 'email' : 'url'}
+                            value={recipient}
+                            onChange={(e) => {
+                              setNotificationChannels(prev => 
+                                prev.map(ch => 
+                                  ch.channel === channelDef.value 
+                                    ? { ...ch, recipient: e.target.value }
+                                    : ch
+                                )
+                              );
+                            }}
+                            placeholder={
+                              channelDef.value === 'email' 
+                                ? 'you@example.com' 
+                                : channelDef.value === 'teams'
+                                  ? 'https://outlook.office.com/webhook/...'
+                                  : channelDef.value === 'slack'
+                                    ? 'https://hooks.slack.com/services/...'
+                                    : 'https://your-webhook-url.com/...'
+                            }
+                            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-sm"
+                          />
+                          {channelDef.value === 'teams' && (
+                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                              Get this URL from: Teams channel &rarr; Connectors &rarr; Incoming Webhook
+                            </p>
+                          )}
+                          {channelDef.value === 'slack' && (
+                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                              Get this URL from: Slack App &rarr; Incoming Webhooks
+                            </p>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             </div>
           )}
@@ -541,6 +616,50 @@ export default function CreateTaskPage() {
                 max={500}
                 className="w-32 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
               />
+            </div>
+          )}
+        </div>
+
+        {/* Output Saving */}
+        <div className="bg-white dark:bg-gray-800 p-6 rounded-lg border border-gray-200 dark:border-gray-700">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
+              </svg>
+              <h2 className="text-lg font-medium text-gray-900 dark:text-gray-100">
+                Save Output to Library
+              </h2>
+            </div>
+            <label className="flex items-center cursor-pointer">
+              <input
+                type="checkbox"
+                checked={outputSavingEnabled}
+                onChange={(e) => setOutputSavingEnabled(e.target.checked)}
+                className="w-5 h-5 text-green-600 border-gray-300 rounded focus:ring-green-500"
+              />
+              <span className="ml-2 text-sm text-gray-600 dark:text-gray-400">Enable</span>
+            </label>
+          </div>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+            Automatically save task outputs to your Tasks library for future reference and search.
+          </p>
+          
+          {outputSavingEnabled && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Tags (comma-separated)
+              </label>
+              <input
+                type="text"
+                value={outputSavingTags}
+                onChange={(e) => setOutputSavingTags(e.target.value)}
+                placeholder="e.g., research, weekly, report"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+              />
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                Use tags to organize and filter saved outputs in your Tasks library.
+              </p>
             </div>
           )}
         </div>
