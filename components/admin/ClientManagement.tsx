@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { formatDate } from '@/lib/date-utils';
 
 interface Client {
   serverId: string;
@@ -269,7 +270,7 @@ export default function ClientManagement() {
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {new Date(client.createdAt).toLocaleDateString()}
+                      {formatDate(client.createdAt)}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                       <button

@@ -8,6 +8,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/components/auth/AuthContext';
+import { formatDateTime, formatDate } from '@/lib/date-utils';
 
 interface Task {
   id: string;
@@ -300,7 +301,7 @@ export default function TasksListPage() {
                 </p>
                 {task.next_run_at && (
                   <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                    Next run: {new Date(task.next_run_at).toLocaleString()}
+                    Next run: {formatDateTime(task.next_run_at)}
                   </p>
                 )}
               </div>
@@ -313,7 +314,7 @@ export default function TasksListPage() {
                 <span className="text-red-600 dark:text-red-400">{task.error_count} errors</span>
               )}
               {task.last_run_at && (
-                <span>Last: {new Date(task.last_run_at).toLocaleDateString()}</span>
+                <span>Last: {formatDate(task.last_run_at)}</span>
               )}
             </div>
 

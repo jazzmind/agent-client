@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { listTools, deleteTool, updateTool } from '@/lib/admin-client';
+import { formatDate } from '@/lib/date-utils';
 
 interface Tool {
   id: string;
@@ -150,7 +151,7 @@ export default function ToolManagement() {
       </div>
       
       <div className="text-sm text-gray-500">
-        <span>Created {new Date(tool.created_at).toLocaleDateString()}</span>
+        <span>Created {formatDate(tool.created_at)}</span>
       </div>
     </div>
   );

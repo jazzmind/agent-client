@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { formatDate } from '@/lib/date-utils';
 
 interface RAGDatabase {
   id: string;
@@ -157,7 +158,7 @@ export default function RAGManagement() {
         </div>
         <div>
           <p className="text-gray-500">Updated</p>
-          <p className="font-medium text-gray-900">{new Date(database.lastUpdated).toLocaleDateString()}</p>
+          <p className="font-medium text-gray-900">{formatDate(database.lastUpdated)}</p>
         </div>
       </div>
     </div>

@@ -8,6 +8,7 @@
 import { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
+import { formatDateTime } from '@/lib/date-utils';
 import { useAuth } from '@/components/auth/AuthContext';
 
 interface Task {
@@ -174,7 +175,7 @@ export default function TaskInsightsPage() {
               >
                 <p className="text-gray-900 dark:text-gray-100">{insight.content}</p>
                 <div className="mt-2 text-xs text-gray-500 dark:text-gray-400">
-                  Created: {new Date(insight.createdAt).toLocaleString()}
+                  Created: {formatDateTime(insight.createdAt)}
                   {insight.executionId && (
                     <span className="ml-4">Execution: {insight.executionId.slice(0, 8)}...</span>
                   )}

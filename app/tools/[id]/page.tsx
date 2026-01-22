@@ -8,6 +8,7 @@
 
 import React, { useEffect, useState, use } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { formatDate } from '@/lib/date-utils';
 import { Tool } from '@/lib/types';
 import { ToolPlayground } from '@/components/tools/ToolPlayground';
 import { ToolConfigPanel } from '@/components/tools/ToolConfigPanel';
@@ -240,7 +241,7 @@ export default function ToolDetailPage({ params }: { params: Promise<{ id: strin
               <div>
                 <h2 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">Created</h2>
                 <p className="text-gray-900 dark:text-gray-100">
-                  {new Date(tool.created_at).toLocaleDateString()}
+                  {formatDate(tool.created_at)}
                 </p>
               </div>
             </div>

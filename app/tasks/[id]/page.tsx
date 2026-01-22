@@ -9,6 +9,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/components/auth/AuthContext';
+import { formatDateTime, formatDate, formatTime } from '@/lib/date-utils';
 
 interface Agent {
   id: string;
@@ -576,7 +577,7 @@ export default function TaskDetailPage() {
               <div>
                 <label className="text-sm text-gray-600 dark:text-gray-400">Next Run</label>
                 <p className="text-gray-900 dark:text-gray-100 mt-1">
-                  {new Date(task.next_run_at).toLocaleString()}
+                  {formatDateTime(task.next_run_at)}
                 </p>
               </div>
             )}
@@ -608,7 +609,7 @@ export default function TaskDetailPage() {
                   </span>
                   {task.delegation_expires_at && (
                     <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                      Expires: {new Date(task.delegation_expires_at).toLocaleDateString()}
+                      Expires: {formatDate(task.delegation_expires_at)}
                     </p>
                   )}
                 </div>
@@ -696,7 +697,7 @@ export default function TaskDetailPage() {
               <div className="col-span-2">
                 <label className="text-sm text-gray-600 dark:text-gray-400">Last Run</label>
                 <p className="text-gray-900 dark:text-gray-100">
-                  {new Date(task.last_run_at).toLocaleString()}
+                  {formatDateTime(task.last_run_at)}
                 </p>
               </div>
             )}
@@ -764,7 +765,7 @@ export default function TaskDetailPage() {
                 >
                   <div className="flex items-center gap-4">
                     <span className="text-gray-900 dark:text-gray-100 text-sm">
-                      {new Date(exec.created_at).toLocaleString()}
+                      {formatDateTime(exec.created_at)}
                     </span>
                     <span className="text-gray-600 dark:text-gray-400 text-sm">
                       {getTriggerIcon(exec.trigger_source)} {exec.trigger_source}
@@ -786,6 +787,16 @@ export default function TaskDetailPage() {
                 {/* Expanded Details */}
                 {expandedExecution === exec.id && (
                   <div className="border-t border-gray-200 dark:border-gray-700 p-4 bg-gray-50 dark:bg-gray-900">
+                    {/* View Full Details Link */}
+                    <div className="mb-4">
+                      <Link
+                        href={`/tasks/${task.id}/executions/${exec.id}`}
+                        className="inline-flex items-center gap-2 px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors"
+                      >
+                        View Full Details →
+                      </Link>
+                    </div>
+
                     {/* Execution Error */}
                     {exec.error && (
                       <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 rounded">
@@ -810,7 +821,7 @@ export default function TaskDetailPage() {
                     {exec.output_summary && (
                       <div className="mb-4">
                         <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Output Summary</h4>
-                        <p className="text-gray-600 dark:text-gray-400 text-sm bg-gray-100 dark:bg-gray-800 p-3 rounded">
+                        <p className="text-gray-600 dark:text-gray-400 text-sm bg-gray-100 dark:bg-gray-800 p-3 rounded line-clamp-6">
                           {exec.output_summary}
                         </p>
                       </div>
@@ -876,7 +887,7 @@ export default function TaskDetailPage() {
                                           {event.type.replace(/_/g, ' ')}
                                         </span>
                                         <span className="text-gray-500 dark:text-gray-400 text-xs">
-                                          {new Date(event.timestamp).toLocaleTimeString()}
+                                          {formatTime(event.timestamp)}
                                         </span>
                                       </div>
                                       {event.error && (
@@ -967,23 +978,23 @@ export default function TaskDetailPage() {
                           {notif.subject}
                         </p>
                         <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                          {notif.created_at && new Date(notif.created_at).toLocaleString()}
+                          {notif.created_at && formatDateTime(notif.created_at)}
                         </p>
                       </div>
                       <div className="text-right text-sm">
                         {notif.sent_at && (
                           <p className="text-green-600 dark:text-green-400">
-                            Sent: {new Date(notif.sent_at).toLocaleString()}
+                            Sent: {formatDateTime(notif.sent_at)}
                           </p>
                         )}
                         {notif.delivered_at && (
                           <p className="text-blue-600 dark:text-blue-400">
-                            Delivered: {new Date(notif.delivered_at).toLocaleString()}
+                            Delivered: {formatDateTime(notif.delivered_at)}
                           </p>
                         )}
                         {notif.read_at && (
                           <p className="text-purple-600 dark:text-purple-400">
-                            Read: {new Date(notif.read_at).toLocaleString()}
+                            Read: {formatDateTime(notif.read_at)}
                           </p>
                         )}
                       </div>
@@ -1060,7 +1071,7 @@ export default function TaskDetailPage() {
                   >
                     <p className="text-gray-900 dark:text-gray-100 text-sm">{insight.content}</p>
                     <div className="mt-2 text-xs text-gray-500 dark:text-gray-400 flex items-center gap-4">
-                      <span>Created: {new Date(insight.createdAt).toLocaleString()}</span>
+                      <span>Created: {formatDateTime(insight.createdAt)}</span>
                       {insight.executionId && (
                         <span>Execution: {insight.executionId.slice(0, 8)}...</span>
                       )}
@@ -1076,8 +1087,8 @@ export default function TaskDetailPage() {
 
       {/* Metadata */}
       <div className="mt-6 text-sm text-gray-500 dark:text-gray-400">
-        <p>Created: {new Date(task.created_at).toLocaleString()}</p>
-        <p>Updated: {new Date(task.updated_at).toLocaleString()}</p>
+        <p>Created: {formatDateTime(task.created_at)}</p>
+        <p>Updated: {formatDateTime(task.updated_at)}</p>
         <p>ID: {task.id}</p>
       </div>
     </div>

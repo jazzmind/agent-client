@@ -10,6 +10,7 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { getToolIcon } from '@/components/tools';
+import { formatTime } from '@/lib/date-utils';
 
 interface ToolCallData {
   /** Tool name */
@@ -225,12 +226,12 @@ export function ToolCallCard({
             <div className="flex gap-4 text-xs text-gray-500 dark:text-gray-400">
               {toolCall.started_at && (
                 <span>
-                  Started: {new Date(toolCall.started_at).toLocaleTimeString()}
+                  Started: {formatTime(toolCall.started_at)}
                 </span>
               )}
               {toolCall.completed_at && (
                 <span>
-                  Completed: {new Date(toolCall.completed_at).toLocaleTimeString()}
+                  Completed: {formatTime(toolCall.completed_at)}
                 </span>
               )}
             </div>

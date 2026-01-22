@@ -4,6 +4,7 @@ import React, { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { WorkflowEditor } from '@/components/workflow';
+import { formatDate, formatDateTime } from '@/lib/date-utils';
 
 interface Workflow {
   id: string;
@@ -241,13 +242,13 @@ export default function WorkflowDetailPage() {
           {workflow.created_at && (
             <div>
               <span className="text-gray-500 dark:text-gray-400">Created</span>
-              <p className="text-gray-900 dark:text-gray-100">{new Date(workflow.created_at).toLocaleDateString()}</p>
+              <p className="text-gray-900 dark:text-gray-100">{formatDate(workflow.created_at)}</p>
             </div>
           )}
           {workflow.updated_at && (
             <div>
               <span className="text-gray-500 dark:text-gray-400">Updated</span>
-              <p className="text-gray-900 dark:text-gray-100">{new Date(workflow.updated_at).toLocaleDateString()}</p>
+              <p className="text-gray-900 dark:text-gray-100">{formatDate(workflow.updated_at)}</p>
             </div>
           )}
         </div>
@@ -415,7 +416,7 @@ export default function WorkflowDetailPage() {
                     <div>
                       <p className="font-mono text-sm text-gray-900 dark:text-gray-100">{exec.id.slice(0, 8)}...</p>
                       <p className="text-xs text-gray-500 dark:text-gray-400">
-                        {exec.trigger_source} • {new Date(exec.started_at).toLocaleString()}
+                        {exec.trigger_source} • {formatDateTime(exec.started_at)}
                       </p>
                     </div>
                   </div>

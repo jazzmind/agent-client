@@ -8,6 +8,7 @@
 
 import React, { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
+import { formatDateTime } from '@/lib/date-utils';
 import type { Agent, Run } from '@/lib/types';
 
 export default function AdminDashboardPage() {
@@ -126,7 +127,7 @@ export default function AdminDashboardPage() {
                         {r.agent_id}
                       </Link>
                     </td>
-                    <td className="py-2 pr-4">{new Date(r.created_at).toLocaleString()}</td>
+                    <td className="py-2 pr-4">{formatDateTime(r.created_at)}</td>
                     <td className="py-2 pr-4">{r.id}</td>
                   </tr>
                 ))}

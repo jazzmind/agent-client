@@ -8,6 +8,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { formatDateTime } from '@/lib/date-utils';
 
 interface WorkflowExecution {
   id: string;
@@ -324,7 +325,7 @@ export default function ExecutionDetailPage() {
             <div>
               <p className="text-xs text-gray-500 dark:text-gray-400">Started</p>
               <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                {new Date(execution.started_at).toLocaleString()}
+                {formatDateTime(execution.started_at)}
               </p>
             </div>
             {execution.completed_at && (
@@ -332,7 +333,7 @@ export default function ExecutionDetailPage() {
                 <div>
                   <p className="text-xs text-gray-500 dark:text-gray-400">Completed</p>
                   <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                    {new Date(execution.completed_at).toLocaleString()}
+                    {formatDateTime(execution.completed_at)}
                   </p>
                 </div>
                 <div>

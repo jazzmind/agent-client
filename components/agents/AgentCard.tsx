@@ -13,6 +13,7 @@
 import React from 'react';
 import { Agent } from '@/lib/types';
 import Link from 'next/link';
+import { formatDate } from '@/lib/date-utils';
 
 interface AgentCardProps {
   agent: Agent;
@@ -145,7 +146,7 @@ export function AgentCard({ agent, onTest, onDelete, className = '' }: AgentCard
       {/* Timestamps - only show for non-builtin agents */}
       {!isBuiltin && agent.updated_at && (
         <div className="mt-3 pt-3 border-t border-gray-100 dark:border-gray-700 text-xs text-gray-400 dark:text-gray-500">
-          <div>Updated: {new Date(agent.updated_at).toLocaleDateString()}</div>
+          <div>Updated: {formatDate(agent.updated_at)}</div>
         </div>
       )}
     </div>

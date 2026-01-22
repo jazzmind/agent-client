@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { MODELS } from '@/lib/models';
+import { formatDate } from '@/lib/date-utils';
 import { 
   listAgents, 
   deleteAgent, 
@@ -237,7 +238,7 @@ export default function AgentManagement() {
       </div>
       
       <div className="text-sm text-gray-500">
-        <span>Created {new Date(agent.created_at).toLocaleDateString()}</span>
+        <span>Created {formatDate(agent.created_at)}</span>
       </div>
     </div>
   );

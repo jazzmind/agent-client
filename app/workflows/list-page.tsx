@@ -8,6 +8,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/components/auth/AuthContext';
+import { formatDate } from '@/lib/date-utils';
 
 interface Workflow {
   id: string;
@@ -226,7 +227,7 @@ export default function WorkflowsListPage() {
                       {lastExecution.status}
                     </span>
                     <span className="text-xs text-gray-500 dark:text-gray-400">
-                      {new Date(lastExecution.started_at).toLocaleDateString()}
+                      {formatDate(lastExecution.started_at)}
                     </span>
                   </div>
                   <div className="text-xs text-gray-500 dark:text-gray-400">

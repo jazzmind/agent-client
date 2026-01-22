@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { listWorkflows, deleteWorkflow } from '../../lib/admin-client';
+import { formatDate } from '@/lib/date-utils';
 
 interface WorkflowStep {
   id: string;
@@ -164,7 +165,7 @@ export default function WorkflowManagement() {
       </div>
       
       <div className="text-sm text-gray-500">
-        <span>Created {new Date(workflow.created_at).toLocaleDateString()}</span>
+        <span>Created {formatDate(workflow.created_at)}</span>
       </div>
     </div>
   );

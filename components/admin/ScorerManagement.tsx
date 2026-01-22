@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { listScorers, deleteScorer, createScorer } from '../../lib/admin-client';
+import { formatDate } from '@/lib/date-utils';
 
 interface Scorer {
   id: string;
@@ -133,7 +134,7 @@ export default function ScorerManagement() {
       </div>
       
       <div className="text-sm text-gray-500">
-        <span>Created {new Date(scorer.created_at).toLocaleDateString()}</span>
+        <span>Created {formatDate(scorer.created_at)}</span>
       </div>
     </div>
   );
