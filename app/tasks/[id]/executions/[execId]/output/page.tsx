@@ -66,7 +66,8 @@ function extractContent(output: string | undefined | null): string {
         content = extractFromParsed(parsed);
       } catch {
         // Still not parseable, try regex extraction as last resort
-        const resultMatch = content.match(/['"]?result['"]?\s*:\s*['"](.+?)['"]?\s*\}$/s);
+        // Using [\s\S] instead of . with /s flag for compatibility
+        const resultMatch = content.match(/['"]?result['"]?\s*:\s*['"](.+?)['"]?\s*\}$/);
         if (resultMatch) {
           content = resultMatch[1];
         }
