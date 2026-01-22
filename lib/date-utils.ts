@@ -39,7 +39,7 @@ export function formatDateTime(isoString: string | undefined | null): string {
       year: 'numeric',
       month: 'short',
       day: 'numeric',
-      hour: '2-digit',
+      hour: 'numeric',  // 'numeric' gives "1" instead of "01"
       minute: '2-digit',
       timeZoneName: 'short',
     });
@@ -83,7 +83,7 @@ export function formatTime(isoString: string | undefined | null): string {
     if (isNaN(date.getTime())) return 'Invalid time';
     
     return date.toLocaleTimeString(undefined, {
-      hour: '2-digit',
+      hour: 'numeric',  // 'numeric' gives "1" instead of "01"
       minute: '2-digit',
     });
   } catch {
@@ -104,7 +104,7 @@ export function formatTimeWithSeconds(isoString: string | undefined | null): str
     if (isNaN(date.getTime())) return 'Invalid time';
     
     return date.toLocaleTimeString(undefined, {
-      hour: '2-digit',
+      hour: 'numeric',  // 'numeric' gives "1" instead of "01"
       minute: '2-digit',
       second: '2-digit',
     });
