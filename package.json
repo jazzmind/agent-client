@@ -22,12 +22,14 @@
     "@jazzmind/busibox-app": "^2.1.14",
     "@tailwindcss/typography": "^0.5.19",
     "@types/dagre": "^0.7.53",
+    "@types/react-syntax-highlighter": "^15.5.13",
     "dagre": "^0.8.5",
     "jose": "^6.1.2",
     "lucide-react": "^0.469.0",
     "next": "^16.0.10",
     "react": "^19.2.3",
     "react-dom": "^19.2.3",
+    "react-syntax-highlighter": "^16.1.0",
     "reactflow": "^11.11.4"
   },
   "devDependencies": {

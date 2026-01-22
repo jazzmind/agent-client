@@ -143,22 +143,36 @@ export default function ExecutionDetailPage() {
   const extractContent = (output: string | undefined): string => {
     if (!output) return '';
     
-    let content = output;
+    let content = output.trim();
     
-    // Try to parse as dict if it looks like one
-    if (content.startsWith('{') && content.endsWith('}')) {
+    // Handle JSON or Python dict format
+    if ((content.startsWith('{') && content.endsWith('}')) || 
+        (content.startsWith('[') && content.endsWith(']'))) {
+      
+      // Try JSON first
       try {
         const parsed = JSON.parse(content);
-        if (typeof parsed === 'object') {
-          const result = parsed.result || parsed.summary || parsed.output || parsed.content;
-          if (result) {
-            content = String(result);
+        content = extractFromParsed(parsed);
+      } catch {
+        // Try converting Python dict to JSON (single quotes to double quotes)
+        try {
+          const jsonified = content.replace(/'/g, '"').replace(/\\"/g, "\\'");
+          const parsed = JSON.parse(jsonified);
+          content = extractFromParsed(parsed);
+        } catch {
+          // Try regex extraction as last resort
+          const resultMatch = content.match(/['"]?result['"]?\s*:\s*['"](.+?)['"]?\s*\}$/s);
+          if (resultMatch) {
+            content = resultMatch[1];
           }
         }
-      } catch {
-        // Not valid JSON, try to extract manually
       }
     }
+    
+    // Handle escaped newlines
+    content = content.replace(/\\n/g, '\n');
+    content = content.replace(/\\"/g, '"');
+    content = content.replace(/\\'/g, "'");
     
     // Strip markdown code fences if present
     content = content.trim();
@@ -174,6 +188,22 @@ export default function ExecutionDetailPage() {
     }
     
     return content.trim();
+  };
+  
+  // Helper to extract content from parsed object
+  const extractFromParsed = (parsed: any): string => {
+    if (typeof parsed === 'string') return parsed;
+    if (typeof parsed !== 'object' || parsed === null) return String(parsed);
+    
+    const possibleFields = ['result', 'output', 'content', 'response', 'summary', 'text', 'message', 'data', 'answer'];
+    for (const field of possibleFields) {
+      if (parsed[field] !== undefined) {
+        const value = parsed[field];
+        if (typeof value === 'string') return value;
+        if (typeof value === 'object') return extractFromParsed(value);
+      }
+    }
+    return JSON.stringify(parsed, null, 2);
   };
 
   if (loading) {
