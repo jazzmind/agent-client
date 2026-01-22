@@ -6,16 +6,33 @@
  */
 
 /**
+ * Ensure a timestamp is treated as UTC.
+ * If the timestamp doesn't have a Z suffix or timezone offset, append Z.
+ */
+function ensureUTC(timestamp: string): string {
+  // If it already has timezone info (Z or +/-offset), return as-is
+  if (/[Zz]$/.test(timestamp) || /[+-]\d{2}:\d{2}$/.test(timestamp)) {
+    return timestamp;
+  }
+  // Add Z suffix to treat as UTC
+  return timestamp + 'Z';
+}
+
+/**
  * Format a date/time string for display with full date and time.
  * Includes timezone indicator for clarity.
  * 
+ * Note: Timestamps from the database are stored in UTC. If they don't have
+ * a Z suffix, we append one to ensure proper timezone conversion.
+ * 
  * @example formatDateTime('2026-01-22T17:16:11.163071Z') => 'Jan 22, 2026, 12:16 PM EST'
+ * @example formatDateTime('2026-01-22T17:16:11.163071') => 'Jan 22, 2026, 12:16 PM EST' (same, assumes UTC)
  */
 export function formatDateTime(isoString: string | undefined | null): string {
   if (!isoString) return 'N/A';
   
   try {
-    const date = new Date(isoString);
+    const date = new Date(ensureUTC(isoString));
     if (isNaN(date.getTime())) return 'Invalid date';
     
     return date.toLocaleString(undefined, {
@@ -40,7 +57,7 @@ export function formatDate(isoString: string | undefined | null): string {
   if (!isoString) return 'N/A';
   
   try {
-    const date = new Date(isoString);
+    const date = new Date(ensureUTC(isoString));
     if (isNaN(date.getTime())) return 'Invalid date';
     
     return date.toLocaleDateString(undefined, {
@@ -62,7 +79,7 @@ export function formatTime(isoString: string | undefined | null): string {
   if (!isoString) return 'N/A';
   
   try {
-    const date = new Date(isoString);
+    const date = new Date(ensureUTC(isoString));
     if (isNaN(date.getTime())) return 'Invalid time';
     
     return date.toLocaleTimeString(undefined, {
@@ -83,7 +100,7 @@ export function formatTimeWithSeconds(isoString: string | undefined | null): str
   if (!isoString) return 'N/A';
   
   try {
-    const date = new Date(isoString);
+    const date = new Date(ensureUTC(isoString));
     if (isNaN(date.getTime())) return 'Invalid time';
     
     return date.toLocaleTimeString(undefined, {
@@ -106,7 +123,7 @@ export function formatRelativeTime(isoString: string | undefined | null): string
   if (!isoString) return 'N/A';
   
   try {
-    const date = new Date(isoString);
+    const date = new Date(ensureUTC(isoString));
     if (isNaN(date.getTime())) return 'Invalid date';
     
     const now = new Date();
@@ -148,7 +165,7 @@ export function formatShortRelativeTime(isoString: string | undefined | null): s
   if (!isoString) return 'N/A';
   
   try {
-    const date = new Date(isoString);
+    const date = new Date(ensureUTC(isoString));
     if (isNaN(date.getTime())) return '--';
     
     const now = new Date();
@@ -222,7 +239,7 @@ export function formatForDateTimeInput(isoString: string | undefined | null): st
   if (!isoString) return '';
   
   try {
-    const date = new Date(isoString);
+    const date = new Date(ensureUTC(isoString));
     if (isNaN(date.getTime())) return '';
     
     // Format as local datetime for input

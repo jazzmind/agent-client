@@ -155,7 +155,10 @@ export default function AgentDetailPage() {
   const [chatKey, setChatKey] = useState(0); // Key to force chat remount when conversation changes
   const [deletedConversationId, setDeletedConversationId] = useState<string | null>(null);
   const [isRedirecting, setIsRedirecting] = useState(false);
-  const [agentApiUrl, setAgentApiUrl] = useState<string | undefined>(undefined);
+  
+  // Use proxy URL for agent API calls (handles auth server-side)
+  // This avoids CORS issues and keeps internal IPs unexposed
+  const agentApiUrl = '/api/agent';
 
   // Determine if agent supports attachments
   const supportsAttachments = useMemo(() => {
@@ -191,19 +194,6 @@ export default function AgentDetailPage() {
           is_builtin: Boolean((data as any).is_builtin),
           is_personal: !Boolean((data as any).is_builtin),
         });
-
-        // Fetch runtime config for agent API URL
-        try {
-          const configRes = await fetch('/api/config');
-          if (configRes.ok) {
-            const configData = await configRes.json();
-            if (configData.agentApiUrl) {
-              setAgentApiUrl(configData.agentApiUrl);
-            }
-          }
-        } catch (e) {
-          console.warn('[AgentDetail] Failed to fetch config, using default URL');
-        }
 
         // Get auth token for chat
         const tokenRes = await fetch('/api/auth/token');
@@ -508,7 +498,7 @@ export default function AgentDetailPage() {
                 ) : (
                   <SimpleChatInterface
                     key={chatKey}
-                    token={token}
+                    token={token || ''} // Token passed for compatibility, but proxy uses cookie auth
                     agentUrl={agentApiUrl}
                     agentId={agent.id}
                     model={agent.model}
