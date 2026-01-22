@@ -19,7 +19,7 @@
     "unlink:local": "./scripts/unlink-local-busibox.sh"
   },
   "dependencies": {
-    "@jazzmind/busibox-app": "^2.1.14",
+    "@jazzmind/busibox-app": "^2.1.15",
     "@tailwindcss/typography": "^0.5.19",
     "@types/dagre": "^0.7.53",
     "@types/react-syntax-highlighter": "^15.5.13",
