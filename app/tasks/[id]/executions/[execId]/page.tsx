@@ -161,7 +161,7 @@ export default function ExecutionDetailPage() {
           content = extractFromParsed(parsed);
         } catch {
           // Try regex extraction as last resort
-          const resultMatch = content.match(/['"]?result['"]?\s*:\s*['"](.+?)['"]?\s*\}$/s);
+          const resultMatch = content.match(/['"]?result['"]?\s*:\s*['"](.+?)['"]?\s*\}$/);
           if (resultMatch) {
             content = resultMatch[1];
           }
